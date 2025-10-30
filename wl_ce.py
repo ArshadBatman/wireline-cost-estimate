@@ -11,24 +11,21 @@ if uploaded_file:
         st.session_state["unique_tracker"] = set()
         st.session_state["last_uploaded_name"] = uploaded_file.name
 
-    # optional manual reset button
+    # Optional manual reset button
     if st.sidebar.button("Reset unique-tool usage (AU14, etc.)", key="reset_unique"):
         st.session_state["unique_tracker"] = set()
         st.sidebar.success("Unique-tool tracker cleared.")
 
-    # read data
+    # Read data
     df = pd.read_excel(uploaded_file, sheet_name="Data")
 
-    # ensure columns
-    if "Flat Rate" not in df.columns:
-        df["Flat Rate"] = 0
-    if "Depth Charge (per ft)" not in df.columns:
-        df["Depth Charge (per ft)"] = 0
-    if "Source" not in df.columns:
-        df["Source"] = "Data"
+    # Ensure required columns exist
+    for col in ["Flat Rate", "Depth Charge (per ft)", "Source"]:
+        if col not in df.columns:
+            df[col] = 0 if "Rate" in col else "Data"
 
-    # Define unique tools that must be charged only once across all sections
-    unique_tools = {"AU14: AUX_SURELOC"}  # set for O(1) membership checks
+    # Unique tools across sections
+    unique_tools = {"AU14: AUX_SURELOC"}
 
     # --- Dynamic Hole Section Setup ---
     st.sidebar.header("Hole Sections Setup")
@@ -43,7 +40,7 @@ if uploaded_file:
     tabs = st.tabs([f'{hs}" Hole Section' for hs in hole_sizes])
     section_totals = {}
 
-    # --- Loop for each dynamically created hole section ---
+    # --- Loop for each hole section ---
     for tab, hole_size in zip(tabs, hole_sizes):
         with tab:
             st.header(f'{hole_size}" Hole Section')
@@ -58,7 +55,7 @@ if uploaded_file:
             total_hours = st.sidebar.number_input(f"Total Hours ({hole_size})", min_value=0, value=0, key=f"hours_{hole_size}")
             discount = st.sidebar.number_input(f"Discount (%) ({hole_size})", min_value=0.0, max_value=100.0, value=0.0, key=f"disc_{hole_size}") / 100.0
 
-            # --- Package & Service Selection ---
+            # --- Package & Service ---
             st.subheader("Select Package")
             package_options = df["Package"].dropna().unique().tolist()
             selected_package = st.selectbox("Choose Package", package_options, key=f"pkg_{hole_size}")
@@ -73,32 +70,20 @@ if uploaded_file:
             code_list = df_service["Specification 1"].dropna().unique().tolist()
             special_cases_map = {
                 "STANDARD WELLS": {
-                    "PEX-AIT (150DegC Max)": [
-                        "AU14: AUX_SURELOC",
-                        "NE1: NEUT_THER",
-                        "DE1: DENS_FULL",
-                        "RE1: RES_INDU"
-                    ],
-                    "DOBMI (150DegC Max)": [
-                        "AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL","AC3: ACOU_3",
-                        "AU2: AUX_PCAL","AU2: AUX_PCAL","PP7: PROC_PETR7","PA7: PROC_ACOU6",
-                        "PA11: PROC_ACOU13","PA12: PROC_ACOU14","IM3: IMAG_SOBM","PI1: PROC_IMAG1",
-                        "PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8","PI9: PROC_IMAG9",
-                        "PI12: PROC_IMAG12","PI13: PROC_IMAG13"
-                    ],
-                    "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)": [
-                        "AU14: AUX_SURELOC","FP25: FPS_SCAR","FP25: FPS_SCAR","FP18: FPS_SAMP",
-                        "FP19: FPS_SPHA","FP23: FPS_TRA","FP24: FPS_TRK","FP28: FPS_FCHA_1",
-                        "FP33: FPS_FCHA_6","FP34: FPS_FCHA_7","FP14: FPS_PUMP","FP14: FPS_PUMP",
-                        "FP42: FPS_PROB_LD","FP11: FPS_PROB_FO","FP26: FPS_FCON","DT3: RTDT_PER",
-                        "PPT12: PROC_PT12", "FP7: FPS_SPPT_2"
-                    ],
-                    "XL Rock (150DegC Max)": [
-                        "AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2"
-                    ],
-                    "XL Rock (150DegC Max) With Core Detection": [
-                        "AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2", "SC4: SC_ADD4"
-                    ], 
+                    "PEX-AIT (150DegC Max)": ["AU14: AUX_SURELOC","NE1: NEUT_THER","DE1: DENS_FULL","RE1: RES_INDU"],
+                    "DOBMI (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL","AC3: ACOU_3",
+                                            "AU2: AUX_PCAL","AU2: AUX_PCAL","PP7: PROC_PETR7","PA7: PROC_ACOU6",
+                                            "PA11: PROC_ACOU13","PA12: PROC_ACOU14","IM3: IMAG_SOBM","PI1: PROC_IMAG1",
+                                            "PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8","PI9: PROC_IMAG9",
+                                            "PI12: PROC_IMAG12","PI13: PROC_IMAG13"],
+                    "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)": ["AU14: AUX_SURELOC","FP25: FPS_SCAR","FP25: FPS_SCAR",
+                                                                      "FP18: FPS_SAMP","FP19: FPS_SPHA","FP23: FPS_TRA",
+                                                                      "FP24: FPS_TRK","FP28: FPS_FCHA_1","FP33: FPS_FCHA_6",
+                                                                      "FP34: FPS_FCHA_7","FP14: FPS_PUMP","FP14: FPS_PUMP",
+                                                                      "FP42: FPS_PROB_LD","FP11: FPS_PROB_FO","FP26: FPS_FCON",
+                                                                      "DT3: RTDT_PER","PPT12: PROC_PT12","FP7: FPS_SPPT_2"],
+                    "XL Rock (150DegC Max)": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2"],
+                    "XL Rock (150DegC Max) With Core Detection": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2", "SC4: SC_ADD4"]
                 },
                 "HT WELLS": {}
             }
@@ -108,18 +93,47 @@ if uploaded_file:
 
             selected_codes = st.multiselect("Select Tools (by Specification 1)", code_list_with_special, key=f"tools_{hole_size}")
 
-            # expand selections
+            # Expand special cases
             expanded_codes = []
+            used_special_cases = []
             for code in selected_codes:
                 if code in special_cases:
                     expanded_codes.extend(special_cases[code])
+                    used_special_cases.append(code)
                 else:
                     expanded_codes.append(code)
 
             df_tools = df_service[df_service["Specification 1"].isin(expanded_codes)].copy()
 
-            st.subheader(f"Selected Data - Package {selected_package}, Service {selected_service}")
-            st.dataframe(df_tools)
+            # --- Insert divider rows for special cases ---
+            if not df_tools.empty:
+                display_rows = []
+                last_index = 0
+                for sc in used_special_cases:
+                    sc_rows = df_tools[df_tools["Specification 1"].isin(special_cases[sc])]
+                    if not sc_rows.empty:
+                        idx = sc_rows.index[0]
+                        display_rows.append(df_tools.iloc[last_index:idx])
+                        # Divider row
+                        divider = pd.DataFrame({
+                            "Specification 1": [f"--- {sc} ---"], 
+                            "Specification 2": [""],
+                            "Source": [""],
+                            "Reference": [""]
+                        })
+                        display_rows.append(divider)
+                        last_index = idx
+                display_rows.append(df_tools.iloc[last_index:])
+                display_df = pd.concat(display_rows)
+
+                # Style divider row
+                def highlight_divider(row):
+                    if str(row["Specification 1"]).startswith("---"):
+                        return ["background-color: red; color: white"] * len(row)
+                    return [""] * len(row)
+
+                st.subheader(f"Selected Data - Package {selected_package}, Service {selected_service}")
+                st.dataframe(display_df.style.apply(highlight_divider, axis=1))
 
             # --- Calculation ---
             if not df_tools.empty:
@@ -141,7 +155,7 @@ if uploaded_file:
                 calc_df["User Flat Charge"] = calc_df["Flat Rate"].apply(lambda x: 1 if x > 0 else 0)
                 calc_df = st.data_editor(calc_df, num_rows="dynamic", key=f"editor_{hole_size}")
 
-                # operation params
+                # Operation params
                 calc_df["Quantity of Tools"] = quantity_tools
                 calc_df["Total Days"] = total_days
                 calc_df["Total Months"] = total_months
@@ -183,7 +197,6 @@ if uploaded_file:
                                 calc_df.loc[i, "Status"] = "Duplicate — Not charged"
                             tracker.add(ut)
 
-                # Save tracker
                 st.session_state["unique_tracker"] = tracker
 
                 # Total per row and section
