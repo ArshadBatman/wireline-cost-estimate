@@ -30,7 +30,6 @@ if uploaded_file:
     # --- Dynamic Hole Section Setup ---
     st.sidebar.header("Hole Sections Setup")
     num_sections = st.sidebar.number_input("Number of Hole Sections", min_value=1, max_value=5, value=2, step=1)
-
     hole_sizes = []
     for i in range(num_sections):
         hole_size = st.sidebar.text_input(f"Hole Section {i+1} Size (inches)", value=f"{12.25 - i*3.75:.2f}")
@@ -105,27 +104,22 @@ if uploaded_file:
 
             df_tools = df_service[df_service["Specification 1"].isin(expanded_codes)].copy()
 
-            # --- Insert divider rows before special-case groups ---
+            # --- Row-by-row approach to insert dividers ---
             if not df_tools.empty:
                 display_rows = []
-                last_index = 0
+                used_special_cases_set = set(used_special_cases)
 
-                # Sort by special cases first if needed
-                for sc in used_special_cases:
-                    sc_rows = df_tools[df_tools["Specification 1"].isin(special_cases[sc])]
-                    if not sc_rows.empty:
-                        idx = sc_rows.index[0]  # first row of this special case
-                        # Append rows before the special-case group
-                        if last_index < idx:
-                            display_rows.append(df_tools.iloc[last_index:idx])
-                        # Divider row
-                        divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
-                        divider["Specification 1"] = f"--- {sc} ---"
-                        display_rows.append(divider)
-                        last_index = idx  # keep last_index at start of special-case group
+                for idx, row in df_tools.iterrows():
+                    # Insert divider before first row of special-case group
+                    for sc in used_special_cases_set:
+                        if row["Specification 1"] in special_cases[sc] and f"divider_{sc}" not in st.session_state:
+                            divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
+                            divider["Specification 1"] = f"--- {sc} ---"
+                            display_rows.append(divider)
+                            st.session_state[f"divider_{sc}"] = True
+                            break
+                    display_rows.append(row.to_frame().T)
 
-                # Append remaining rows after last special-case group
-                display_rows.append(df_tools.iloc[last_index:])
                 display_df = pd.concat(display_rows, ignore_index=True)
 
                 # Style divider row
