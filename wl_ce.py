@@ -114,13 +114,13 @@ if uploaded_file:
                     if not sc_rows.empty:
                         idx = sc_rows.index[0]
                         display_rows.append(df_tools.iloc[last_index:idx])
-                        # Divider row with all columns
-                        divider = pd.DataFrame({col: "" for col in df_tools.columns})
+                        # Divider row with all columns and a single index
+                        divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
                         divider["Specification 1"] = f"--- {sc} ---"
                         display_rows.append(divider)
                         last_index = idx
                 display_rows.append(df_tools.iloc[last_index:])
-                display_df = pd.concat(display_rows)
+                display_df = pd.concat(display_rows, ignore_index=True)
 
                 # Style divider row
                 def highlight_divider(row):
