@@ -105,7 +105,7 @@ if uploaded_file:
 
             df_tools = df_service[df_service["Specification 1"].isin(expanded_codes)].copy()
 
-            # --- Insert divider rows for special cases ---
+            # --- Insert divider rows for special cases (with all columns) ---
             if not df_tools.empty:
                 display_rows = []
                 last_index = 0
@@ -114,7 +114,7 @@ if uploaded_file:
                     if not sc_rows.empty:
                         idx = sc_rows.index[0]
                         display_rows.append(df_tools.iloc[last_index:idx])
-                        # Divider row
+                        # Divider row with all columns
                         divider = pd.DataFrame({col: "" for col in df_tools.columns})
                         divider["Specification 1"] = f"--- {sc} ---"
                         display_rows.append(divider)
@@ -212,5 +212,3 @@ if uploaded_file:
     if section_totals:
         grand_total = sum(section_totals.values())
         st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
-
-
