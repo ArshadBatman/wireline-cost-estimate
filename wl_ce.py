@@ -105,20 +105,26 @@ if uploaded_file:
 
             df_tools = df_service[df_service["Specification 1"].isin(expanded_codes)].copy()
 
-            # --- Insert divider rows for special cases (with all columns) ---
+            # --- Insert divider rows before special-case groups ---
             if not df_tools.empty:
                 display_rows = []
                 last_index = 0
+
+                # Sort by special cases first if needed
                 for sc in used_special_cases:
                     sc_rows = df_tools[df_tools["Specification 1"].isin(special_cases[sc])]
                     if not sc_rows.empty:
-                        idx = sc_rows.index[0]
-                        display_rows.append(df_tools.iloc[last_index:idx])
-                        # Divider row with all columns and a single index
+                        idx = sc_rows.index[0]  # first row of this special case
+                        # Append rows before the special-case group
+                        if last_index < idx:
+                            display_rows.append(df_tools.iloc[last_index:idx])
+                        # Divider row
                         divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
                         divider["Specification 1"] = f"--- {sc} ---"
                         display_rows.append(divider)
-                        last_index = idx
+                        last_index = idx  # keep last_index at start of special-case group
+
+                # Append remaining rows after last special-case group
                 display_rows.append(df_tools.iloc[last_index:])
                 display_df = pd.concat(display_rows, ignore_index=True)
 
