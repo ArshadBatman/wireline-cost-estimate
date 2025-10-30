@@ -87,6 +87,9 @@ if uploaded_file:
                     "XL Rock (150DegC Max)": [
                         "AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2"
                     ],
+                    "XL Rock (150DegC Max) With Core Detection": [
+                        "AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2", "SC4: SC_ADD4"
+                    ], 
                 },
                 "HT WELLS": {}
             }
@@ -201,4 +204,5 @@ if uploaded_file:
     if section_totals:
         grand_total = sum(section_totals.values())
         st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
+
 
