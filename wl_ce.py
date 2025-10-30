@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-st.title("Cost Estimate Calculator")
+st.title("Wireline Cost Estimate Calculator")
 
 uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx"])
 
@@ -30,16 +30,25 @@ if uploaded_file:
     # Define unique tools that must be charged only once across all sections
     unique_tools = {"AU14: AUX_SURELOC"}  # set for O(1) membership checks
 
-    # Tabs
-    tab1, tab2 = st.tabs(['12.25" Hole Section', '8.5" Hole Section'])
+    # --- Dynamic Hole Section Setup ---
+    st.sidebar.header("Hole Sections Setup")
+    num_sections = st.sidebar.number_input("Number of Hole Sections", min_value=1, max_value=5, value=2, step=1)
+
+    hole_sizes = []
+    for i in range(num_sections):
+        hole_size = st.sidebar.text_input(f"Hole Section {i+1} Size (inches)", value=f"{12.25 - i*3.75:.2f}")
+        hole_sizes.append(hole_size)
+
+    # Create dynamic tabs
+    tabs = st.tabs([f'{hs}" Hole Section' for hs in hole_sizes])
     section_totals = {}
 
-    # iterate sections in defined order — first tab processed first
-    for tab, hole_size in zip([tab1, tab2], ["12.25", "8.5"]):
+    # --- Loop for each dynamically created hole section ---
+    for tab, hole_size in zip(tabs, hole_sizes):
         with tab:
             st.header(f'{hole_size}" Hole Section')
 
-            # --- Sidebar inputs (unique keys) ---
+            # Sidebar inputs per section
             st.sidebar.subheader(f"Inputs for {hole_size}\" Section")
             quantity_tools = st.sidebar.number_input(f"Quantity of Tools ({hole_size})", min_value=1, value=2, key=f"qty_{hole_size}")
             total_days = st.sidebar.number_input(f"Total Days ({hole_size})", min_value=0, value=0, key=f"days_{hole_size}")
@@ -49,7 +58,7 @@ if uploaded_file:
             total_hours = st.sidebar.number_input(f"Total Hours ({hole_size})", min_value=0, value=0, key=f"hours_{hole_size}")
             discount = st.sidebar.number_input(f"Discount (%) ({hole_size})", min_value=0.0, max_value=100.0, value=0.0, key=f"disc_{hole_size}") / 100.0
 
-            # --- Package & Service ---
+            # --- Package & Service Selection ---
             st.subheader("Select Package")
             package_options = df["Package"].dropna().unique().tolist()
             selected_package = st.selectbox("Choose Package", package_options, key=f"pkg_{hole_size}")
@@ -117,20 +126,18 @@ if uploaded_file:
                 calc_df = pd.DataFrame()
                 calc_df["Source"] = df_tools["Source"]
                 calc_df["Ref Item"] = df_tools["Reference"]
-                calc_df["Code"] = df_tools["Specification 1"].astype(str).str.strip()   # normalize
+                calc_df["Code"] = df_tools["Specification 1"].astype(str).str.strip()
                 calc_df["Items"] = df_tools["Specification 2"]
 
-                # Charges (numeric)
+                # Charges
                 calc_df["Daily Rate"] = pd.to_numeric(df_tools["Daily Rate"], errors="coerce").fillna(0)
                 calc_df["Monthly Rate"] = pd.to_numeric(df_tools["Monthly Rate"], errors="coerce").fillna(0)
                 calc_df["Depth Charge (per ft)"] = pd.to_numeric(df_tools["Depth Charge (per ft)"], errors="coerce").fillna(0)
                 calc_df["Flat Rate"] = pd.to_numeric(df_tools["Flat Charge"], errors="coerce").fillna(0)
-
-                # Other charges (defaults)
                 calc_df["Survey Charge (per ft)"] = 0
                 calc_df["Hourly Charge"] = 0
 
-                # User-editable Flat Charge flag (so user can toggle later)
+                # Editable column
                 calc_df["User Flat Charge"] = calc_df["Flat Rate"].apply(lambda x: 1 if x > 0 else 0)
                 calc_df = st.data_editor(calc_df, num_rows="dynamic", key=f"editor_{hole_size}")
 
@@ -143,7 +150,7 @@ if uploaded_file:
                 calc_df["Total Hours"] = total_hours
                 calc_df["Discount (%)"] = discount * 100
 
-                # --- Compute operating & rental charges BEFORE duplicate zeroing ---
+                # Charges before duplicate handling
                 calc_df["Operating Charge (MYR)"] = (
                     (calc_df["Depth Charge (per ft)"] * total_depth) +
                     (calc_df["Survey Charge (per ft)"] * total_survey) +
@@ -156,55 +163,43 @@ if uploaded_file:
                     ((calc_df["Daily Rate"] * total_days) + (calc_df["Monthly Rate"] * total_months))
                 ) * (1 - discount)
 
-                # --- Detect and zero duplicates for unique_tools ---
+                # Unique-tool duplication logic
                 calc_df["Is Duplicate Unique Tool"] = False
                 calc_df["Status"] = "Charged"
-
                 tracker = set(st.session_state.get("unique_tracker", set()))
 
                 for ut in unique_tools:
                     mask = calc_df["Code"] == ut
                     if mask.any():
                         if ut in tracker:
-                            # already charged in prior section => all current occurrences are duplicates
                             calc_df.loc[mask, "Is Duplicate Unique Tool"] = True
                             calc_df.loc[mask, ["Operating Charge (MYR)", "Rental Charge (MYR)"]] = 0
                             calc_df.loc[mask, "Status"] = "Duplicate — Not charged"
                         else:
-                            # present in this section and NOT seen before: charge only first occurrence here
                             idxs = calc_df[mask].index.tolist()
-                            # mark subsequent occurrences in the same section as duplicates
                             for i in idxs[1:]:
                                 calc_df.loc[i, "Is Duplicate Unique Tool"] = True
                                 calc_df.loc[i, ["Operating Charge (MYR)", "Rental Charge (MYR)"]] = 0
                                 calc_df.loc[i, "Status"] = "Duplicate — Not charged"
-                            # record that this unique tool has now been charged (first occurrence)
                             tracker.add(ut)
 
-                # persist tracker back to session_state
+                # Save tracker
                 st.session_state["unique_tracker"] = tracker
 
-                # --- Final total per row and section ---
+                # Total per row and section
                 calc_df["Total (MYR)"] = calc_df["Operating Charge (MYR)"] + calc_df["Rental Charge (MYR)"]
-
-                # Show the calculated table with status so users can see why AU14 became free
-                # reorder columns to show Status early
                 cols = list(calc_df.columns)
                 if "Status" in cols:
                     cols = ["Status"] + [c for c in cols if c != "Status"]
+
                 st.subheader(f"Calculated Costs - Package {selected_package}, Service {selected_service}")
                 st.dataframe(calc_df[cols])
 
                 section_total = calc_df["Total (MYR)"].sum()
                 section_totals[hole_size] = section_total
-
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
 
     # --- Grand Total ---
     if section_totals:
         grand_total = sum(section_totals.values())
         st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
-
-
-
-
