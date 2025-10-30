@@ -115,12 +115,8 @@ if uploaded_file:
                         idx = sc_rows.index[0]
                         display_rows.append(df_tools.iloc[last_index:idx])
                         # Divider row
-                        divider = pd.DataFrame({
-                            "Specification 1": [f"--- {sc} ---"], 
-                            "Specification 2": [""],
-                            "Source": [""],
-                            "Reference": [""]
-                        })
+                        divider = pd.DataFrame({{col: "" for col in df_tools.columns})
+                        divider["Specification 1"] = f"--- {sc} ---"
                         display_rows.append(divider)
                         last_index = idx
                 display_rows.append(df_tools.iloc[last_index:])
@@ -216,3 +212,4 @@ if uploaded_file:
     if section_totals:
         grand_total = sum(section_totals.values())
         st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
+
