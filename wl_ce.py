@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-st.title("Wireline Cost Estimate Calculator")
+st.title("SMARTLog: Wireline Cost Estimator")
 
 uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx"])
 
@@ -212,3 +212,4 @@ if uploaded_file:
     if section_totals:
         grand_total = sum(section_totals.values())
         st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
+
