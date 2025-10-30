@@ -104,19 +104,19 @@ if uploaded_file:
 
             df_tools = df_service[df_service["Specification 1"].isin(expanded_codes)].copy()
 
-            # --- Row-by-row approach to insert dividers ---
+            # --- Row-by-row approach to insert dividers (local tracking) ---
             if not df_tools.empty:
                 display_rows = []
                 used_special_cases_set = set(used_special_cases)
+                inserted_dividers = set()  # local to this table
 
                 for idx, row in df_tools.iterrows():
-                    # Insert divider before first row of special-case group
                     for sc in used_special_cases_set:
-                        if row["Specification 1"] in special_cases[sc] and f"divider_{sc}" not in st.session_state:
+                        if row["Specification 1"] in special_cases[sc] and sc not in inserted_dividers:
                             divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
                             divider["Specification 1"] = f"--- {sc} ---"
                             display_rows.append(divider)
-                            st.session_state[f"divider_{sc}"] = True
+                            inserted_dividers.add(sc)
                             break
                     display_rows.append(row.to_frame().T)
 
