@@ -107,20 +107,29 @@ if uploaded_file:
 
             df_tools = df_service[df_service["Specification 1"].isin(expanded_codes)].copy()
 
-            # --- Row-by-row approach to insert dividers (local tracking) ---
+            # --- Grouped dividers fix ---
             if not df_tools.empty:
-                display_rows = []
-                used_special_cases_set = set(used_special_cases)
-                inserted_dividers = set()  # local to this table
+                # Identify which special case each tool belongs to
+                def identify_special_case(spec):
+                    for sc, tools in special_cases.items():
+                        if spec in tools:
+                            return sc
+                    return None
 
-                for idx, row in df_tools.iterrows():
-                    for sc in used_special_cases_set:
-                        if row["Specification 1"] in special_cases[sc] and sc not in inserted_dividers:
-                            divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
-                            divider["Specification 1"] = f"--- {sc} ---"
-                            display_rows.append(divider)
-                            inserted_dividers.add(sc)
-                            break
+                df_tools["SpecialCaseGroup"] = df_tools["Specification 1"].apply(identify_special_case)
+
+                # Sort by special case group (so tools are grouped properly)
+                df_tools = df_tools.sort_values(by=["SpecialCaseGroup", "Specification 1"], na_position="last")
+
+                display_rows = []
+                last_case = None
+                for _, row in df_tools.iterrows():
+                    current_case = row["SpecialCaseGroup"]
+                    if current_case and current_case != last_case:
+                        divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
+                        divider["Specification 1"] = f"--- {current_case} ---"
+                        display_rows.append(divider)
+                        last_case = current_case
                     display_rows.append(row.to_frame().T)
 
                 display_df = pd.concat(display_rows, ignore_index=True)
@@ -215,6 +224,3 @@ if uploaded_file:
     if section_totals:
         grand_total = sum(section_totals.values())
         st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
-
-
-
