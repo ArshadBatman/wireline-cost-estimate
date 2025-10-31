@@ -210,7 +210,7 @@ if uploaded_file:
         grand_total = sum(section_totals.values())
         st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
 
-    # --- Excel Download ---
+        # --- Excel Download ---
     if st.button("Download Cost Estimate Excel"):
         output = BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
@@ -218,6 +218,7 @@ if uploaded_file:
                 sheet_name = f'{hole_size}" Hole'
                 wb = writer.book
                 ws = wb.create_sheet(title=sheet_name)
+
                 # --- Header rows ---
                 ws.merge_cells("B2:B4"); ws["B2"]="Reference"
                 ws.merge_cells("C2:C4"); ws["C2"]="Specification 1"
@@ -227,45 +228,88 @@ if uploaded_file:
                 ws.merge_cells("G3:J3"); ws["G3"]="Operating Charge"
                 ws["E4"]="Daily Rate"; ws["F4"]="Monthly Rate"; ws["G4"]="Depth Charge (per ft)"
                 ws["H4"]="Survey Charge (per ft)"; ws["I4"]="Flat Charge"; ws["J4"]="Hourly Charge"
-                for row in range(2,5):
-                    for col in range(2,11):
-                        ws[f"{get_column_letter(col)}{row}"].alignment = Alignment(horizontal="center", vertical="center")
-                current_row=5
+
+                # --- Add Operation Estimated Section ---
+                ws.merge_cells("K2:Q2"); ws["K2"] = "Operation Estimated"
+                ws.merge_cells("K3:K4"); ws["K3"] = "Quantity of Tools"
+
+                ws.merge_cells("L3:M3"); ws["L3"] = "Rental Parameters"
+                ws["L4"] = "Total Days"; ws["M4"] = "Total Months"
+
+                ws.merge_cells("N3:Q3"); ws["N3"] = "Operating Parameters"
+                ws["N4"] = "Total Depth (ft)"
+                ws["O4"] = "Total Survey (ft)"
+                ws["P4"] = "Total Flat Charge (ft)"
+                ws["Q4"] = "Total Hours"
+
+                ws.merge_cells("R2:R4"); ws["R2"] = "Discount (%)"
+
+                # --- Alignment ---
+                for row in ws["B2:R4"]:
+                    for cell in row:
+                        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                        cell.fill = PatternFill(start_color="D9EAD3", end_color="D9EAD3", fill_type="solid")
+
+                current_row = 5
+
+                # --- Insert data for tools ---
                 for sc in used_special_cases:
-                    ws[f"B{current_row}"]=sc
-                    ws[f"B{current_row}"].fill=PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                    ws[f"B{current_row}"].alignment=Alignment(horizontal="center")
-                    current_row+=1
+                    ws[f"B{current_row}"] = sc
+                    ws[f"B{current_row}"].fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                    ws[f"B{current_row}"].alignment = Alignment(horizontal="center")
+                    current_row += 1
                     for item in special_cases_section[sc]:
-                        item_rows=df_tools_section[df_tools_section["Specification 1"]==item]
+                        item_rows = df_tools_section[df_tools_section["Specification 1"] == item]
                         if not item_rows.empty:
-                            item_row=item_rows.iloc[0]
-                            ws[f"B{current_row}"]=item_row.get("Reference","")
-                            ws[f"C{current_row}"]=item_row.get("Specification 1","")
-                            ws[f"D{current_row}"]=item_row.get("Specification 2","")
-                            ws[f"E{current_row}"]=item_row.get("Daily Rate",0)
-                            ws[f"F{current_row}"]=item_row.get("Monthly Rate",0)
-                            ws[f"G{current_row}"]=item_row.get("Depth Charge (per ft)",0)
-                            ws[f"H{current_row}"]=item_row.get("Survey Charge (per ft)",0)
-                            ws[f"I{current_row}"]=item_row.get("Flat Rate",0)
-                            ws[f"J{current_row}"]=item_row.get("Hourly Charge",0)
-                            current_row+=1
+                            item_row = item_rows.iloc[0]
+                            ws[f"B{current_row}"] = item_row.get("Reference", "")
+                            ws[f"C{current_row}"] = item_row.get("Specification 1", "")
+                            ws[f"D{current_row}"] = item_row.get("Specification 2", "")
+                            ws[f"E{current_row}"] = item_row.get("Daily Rate", 0)
+                            ws[f"F{current_row}"] = item_row.get("Monthly Rate", 0)
+                            ws[f"G{current_row}"] = item_row.get("Depth Charge (per ft)", 0)
+                            ws[f"H{current_row}"] = item_row.get("Survey Charge (per ft)", 0)
+                            ws[f"I{current_row}"] = item_row.get("Flat Rate", 0)
+                            ws[f"J{current_row}"] = item_row.get("Hourly Charge", 0)
+
+                            # Insert operation parameters from user inputs
+                            ws[f"K{current_row}"] = st.session_state.get(f"qty_{hole_size}", 0)
+                            ws[f"L{current_row}"] = st.session_state.get(f"days_{hole_size}", 0)
+                            ws[f"M{current_row}"] = st.session_state.get(f"months_{hole_size}", 0)
+                            ws[f"N{current_row}"] = st.session_state.get(f"depth_{hole_size}", 0)
+                            ws[f"O{current_row}"] = st.session_state.get(f"survey_{hole_size}", 0)
+                            ws[f"P{current_row}"] = ws[f"I{current_row}"].value if ws[f"I{current_row}"].value else 0
+                            ws[f"Q{current_row}"] = st.session_state.get(f"hours_{hole_size}", 0)
+                            ws[f"R{current_row}"] = st.session_state.get(f"disc_{hole_size}", 0) * 100
+                            current_row += 1
+
                 # Non-special tools
                 for item in df_tools_section["Specification 1"]:
                     if item not in sum(special_cases_section.values(), []):
-                        item_rows=df_tools_section[df_tools_section["Specification 1"]==item]
+                        item_rows = df_tools_section[df_tools_section["Specification 1"] == item]
                         if not item_rows.empty:
-                            item_row=item_rows.iloc[0]
-                            ws[f"B{current_row}"]=item_row.get("Reference","")
-                            ws[f"C{current_row}"]=item_row.get("Specification 1","")
-                            ws[f"D{current_row}"]=item_row.get("Specification 2","")
-                            ws[f"E{current_row}"]=item_row.get("Daily Rate",0)
-                            ws[f"F{current_row}"]=item_row.get("Monthly Rate",0)
-                            ws[f"G{current_row}"]=item_row.get("Depth Charge (per ft)",0)
-                            ws[f"H{current_row}"]=item_row.get("Survey Charge (per ft)",0)
-                            ws[f"I{current_row}"]=item_row.get("Flat Rate",0)
-                            ws[f"J{current_row}"]=item_row.get("Hourly Charge",0)
-                            current_row+=1
+                            item_row = item_rows.iloc[0]
+                            ws[f"B{current_row}"] = item_row.get("Reference", "")
+                            ws[f"C{current_row}"] = item_row.get("Specification 1", "")
+                            ws[f"D{current_row}"] = item_row.get("Specification 2", "")
+                            ws[f"E{current_row}"] = item_row.get("Daily Rate", 0)
+                            ws[f"F{current_row}"] = item_row.get("Monthly Rate", 0)
+                            ws[f"G{current_row}"] = item_row.get("Depth Charge (per ft)", 0)
+                            ws[f"H{current_row}"] = item_row.get("Survey Charge (per ft)", 0)
+                            ws[f"I{current_row}"] = item_row.get("Flat Rate", 0)
+                            ws[f"J{current_row}"] = item_row.get("Hourly Charge", 0)
+
+                            # Insert operation parameters from user inputs
+                            ws[f"K{current_row}"] = st.session_state.get(f"qty_{hole_size}", 0)
+                            ws[f"L{current_row}"] = st.session_state.get(f"days_{hole_size}", 0)
+                            ws[f"M{current_row}"] = st.session_state.get(f"months_{hole_size}", 0)
+                            ws[f"N{current_row}"] = st.session_state.get(f"depth_{hole_size}", 0)
+                            ws[f"O{current_row}"] = st.session_state.get(f"survey_{hole_size}", 0)
+                            ws[f"P{current_row}"] = ws[f"I{current_row}"].value if ws[f"I{current_row}"].value else 0
+                            ws[f"Q{current_row}"] = st.session_state.get(f"hours_{hole_size}", 0)
+                            ws[f"R{current_row}"] = st.session_state.get(f"disc_{hole_size}", 0) * 100
+                            current_row += 1
+
         output.seek(0)
         st.download_button(
             "Download Cost Estimate Excel",
@@ -273,3 +317,5 @@ if uploaded_file:
             file_name="Cost_Estimate.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
+
