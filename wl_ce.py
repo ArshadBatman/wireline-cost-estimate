@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
-import openpyxl
 from io import BytesIO
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import Alignment, PatternFill
 
 st.title("SMARTLog: Wireline Cost Estimator")
 
@@ -40,8 +41,7 @@ if uploaded_file:
     # Create dynamic tabs
     tabs = st.tabs([f'{hs}" Hole Section' for hs in hole_sizes])
     section_totals = {}
-
-    all_calc_dfs_for_excel = []  # store all sections for Excel download
+    all_calc_dfs_for_excel = []  # store data for Excel download
 
     # --- Loop for each hole section ---
     for tab, hole_size in zip(tabs, hole_sizes):
@@ -96,10 +96,9 @@ if uploaded_file:
 
             special_cases = special_cases_map.get(selected_service, {})
             code_list_with_special = list(special_cases.keys()) + code_list
-
             selected_codes = st.multiselect("Select Tools (by Specification 1)", code_list_with_special, key=f"tools_{hole_size}")
 
-            # --- Expand special cases ---
+            # --- Expand selected special cases ---
             expanded_codes = []
             used_special_cases = []
             for code in selected_codes:
@@ -111,29 +110,28 @@ if uploaded_file:
 
             df_tools = df_service[df_service["Specification 1"].isin(expanded_codes)].copy()
 
-            # --- Row-by-row approach to insert dividers (for display) ---
+            # --- Row-by-row display with dividers ---
             if not df_tools.empty:
                 display_rows = []
                 inserted_dividers = set()
                 for sc in used_special_cases:
-                    # insert divider
+                    # Divider row
                     divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
                     divider["Specification 1"] = f"--- {sc} ---"
                     display_rows.append(divider)
-                    # append all line items for this special case
+                    # All items for this special case
                     for item in special_cases[sc]:
-                        row = df_tools[df_tools["Specification 1"] == item]
-                        display_rows.append(row)
-                    inserted_dividers.add(sc)
+                        item_rows = df_tools[df_tools["Specification 1"] == item]
+                        display_rows.extend([row.to_frame().T for _, row in item_rows.iterrows()])
 
-                # append non-special tools
+                # Non-special tools
                 for item in df_tools["Specification 1"]:
                     if item not in sum(special_cases.values(), []):
-                        display_rows.append(df_tools[df_tools["Specification 1"] == item])
+                        item_rows = df_tools[df_tools["Specification 1"] == item]
+                        display_rows.extend([row.to_frame().T for _, row in item_rows.iterrows()])
 
                 display_df = pd.concat(display_rows, ignore_index=True)
 
-                # Style divider row
                 def highlight_divider(row):
                     if str(row["Specification 1"]).startswith("---"):
                         return ["background-color: red; color: white"] * len(row)
@@ -149,19 +147,14 @@ if uploaded_file:
                 calc_df["Ref Item"] = df_tools["Reference"]
                 calc_df["Code"] = df_tools["Specification 1"].astype(str).str.strip()
                 calc_df["Items"] = df_tools["Specification 2"]
-
-                # Charges
                 calc_df["Daily Rate"] = pd.to_numeric(df_tools["Daily Rate"], errors="coerce").fillna(0)
                 calc_df["Monthly Rate"] = pd.to_numeric(df_tools["Monthly Rate"], errors="coerce").fillna(0)
                 calc_df["Depth Charge (per ft)"] = pd.to_numeric(df_tools["Depth Charge (per ft)"], errors="coerce").fillna(0)
                 calc_df["Flat Rate"] = pd.to_numeric(df_tools["Flat Charge"], errors="coerce").fillna(0)
                 calc_df["Survey Charge (per ft)"] = 0
                 calc_df["Hourly Charge"] = 0
-
                 calc_df["User Flat Charge"] = calc_df["Flat Rate"].apply(lambda x: 1 if x > 0 else 0)
                 calc_df = st.data_editor(calc_df, num_rows="dynamic", key=f"editor_{hole_size}")
-
-                # Operation params
                 calc_df["Quantity of Tools"] = quantity_tools
                 calc_df["Total Days"] = total_days
                 calc_df["Total Months"] = total_months
@@ -169,15 +162,12 @@ if uploaded_file:
                 calc_df["Total Survey (ft)"] = total_survey
                 calc_df["Total Hours"] = total_hours
                 calc_df["Discount (%)"] = discount * 100
-
-                # Charges before duplicate handling
                 calc_df["Operating Charge (MYR)"] = (
                     (calc_df["Depth Charge (per ft)"] * total_depth) +
                     (calc_df["Survey Charge (per ft)"] * total_survey) +
                     (calc_df["Flat Rate"] * calc_df["User Flat Charge"]) +
                     (calc_df["Hourly Charge"] * total_hours)
                 ) * (1 - discount)
-
                 calc_df["Rental Charge (MYR)"] = (
                     calc_df["Quantity of Tools"] *
                     ((calc_df["Daily Rate"] * total_days) + (calc_df["Monthly Rate"] * total_months))
@@ -187,7 +177,6 @@ if uploaded_file:
                 calc_df["Is Duplicate Unique Tool"] = False
                 calc_df["Status"] = "Charged"
                 tracker = set(st.session_state.get("unique_tracker", set()))
-
                 for ut in unique_tools:
                     mask = calc_df["Code"] == ut
                     if mask.any():
@@ -202,59 +191,85 @@ if uploaded_file:
                                 calc_df.loc[i, ["Operating Charge (MYR)", "Rental Charge (MYR)"]] = 0
                                 calc_df.loc[i, "Status"] = "Duplicate — Not charged"
                             tracker.add(ut)
-
                 st.session_state["unique_tracker"] = tracker
-
                 calc_df["Total (MYR)"] = calc_df["Operating Charge (MYR)"] + calc_df["Rental Charge (MYR)"]
+                cols = list(calc_df.columns)
+                if "Status" in cols:
+                    cols = ["Status"] + [c for c in cols if c != "Status"]
+                st.subheader(f"Calculated Costs - Package {selected_package}, Service {selected_service}")
+                st.dataframe(calc_df[cols])
                 section_total = calc_df["Total (MYR)"].sum()
                 section_totals[hole_size] = section_total
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
 
-                all_calc_dfs_for_excel.append((hole_size, used_special_cases, df_tools.copy(), special_cases))
+                # Store for Excel download
+                all_calc_dfs_for_excel.append((hole_size, used_special_cases, df_tools, special_cases))
 
     # --- Grand Total ---
     if section_totals:
         grand_total = sum(section_totals.values())
         st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
 
-    # --- Download Excel ---
+    # --- Excel Download ---
     if st.button("Download Cost Estimate Excel"):
         output = BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             for hole_size, used_special_cases, df_tools_section, special_cases_section in all_calc_dfs_for_excel:
-                start_row = 0
                 sheet_name = f'{hole_size}" Hole'
-                ws_df = pd.DataFrame()  # empty to start sheet
-                # add headers (merged manually in Excel if needed)
-                df_to_write = pd.DataFrame(columns=["Reference","Specification 1","Specification 2",
-                                                    "Daily Rate","Monthly Rate","Depth Charge (per ft)",
-                                                    "Survey Charge (per ft)","Flat Charge","Hourly Charge"])
-                row_idx = 0
+                wb = writer.book
+                ws = wb.create_sheet(title=sheet_name)
+                # --- Header rows ---
+                ws.merge_cells("B2:B4"); ws["B2"]="Reference"
+                ws.merge_cells("C2:C4"); ws["C2"]="Specification 1"
+                ws.merge_cells("D2:D4"); ws["D2"]="Specification 2"
+                ws.merge_cells("E2:J2"); ws["E2"]="Unit Price / Operating Charge"
+                ws.merge_cells("E3:F3"); ws["E3"]="Rental Price"
+                ws.merge_cells("G3:J3"); ws["G3"]="Operating Charge"
+                ws["E4"]="Daily Rate"; ws["F4"]="Monthly Rate"; ws["G4"]="Depth Charge (per ft)"
+                ws["H4"]="Survey Charge (per ft)"; ws["I4"]="Flat Charge"; ws["J4"]="Hourly Charge"
+                for row in range(2,5):
+                    for col in range(2,11):
+                        ws[f"{get_column_letter(col)}{row}"].alignment = Alignment(horizontal="center", vertical="center")
+                current_row=5
                 for sc in used_special_cases:
-                    # special case divider as row
-                    df_to_write.loc[row_idx] = [ "", f"--- {sc} ---", "", "", "", "", "", "", ""]
-                    row_idx += 1
+                    ws[f"B{current_row}"]=sc
+                    ws[f"B{current_row}"].fill=PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                    ws[f"B{current_row}"].alignment=Alignment(horizontal="center")
+                    current_row+=1
                     for item in special_cases_section[sc]:
-                        item_row = df_tools_section[df_tools_section["Specification 1"] == item].iloc[0]
-                        df_to_write.loc[row_idx] = [
-                            item_row["Reference"], item_row["Specification 1"], item_row["Specification 2"],
-                            item_row["Daily Rate"], item_row["Monthly Rate"], item_row["Depth Charge (per ft)"],
-                            item_row["Survey Charge (per ft)"], item_row["Flat Rate"], item_row.get("Hourly Charge",0)
-                        ]
-                        row_idx += 1
-                # non-special tools
+                        item_rows=df_tools_section[df_tools_section["Specification 1"]==item]
+                        if not item_rows.empty:
+                            item_row=item_rows.iloc[0]
+                            ws[f"B{current_row}"]=item_row.get("Reference","")
+                            ws[f"C{current_row}"]=item_row.get("Specification 1","")
+                            ws[f"D{current_row}"]=item_row.get("Specification 2","")
+                            ws[f"E{current_row}"]=item_row.get("Daily Rate",0)
+                            ws[f"F{current_row}"]=item_row.get("Monthly Rate",0)
+                            ws[f"G{current_row}"]=item_row.get("Depth Charge (per ft)",0)
+                            ws[f"H{current_row}"]=item_row.get("Survey Charge (per ft)",0)
+                            ws[f"I{current_row}"]=item_row.get("Flat Rate",0)
+                            ws[f"J{current_row}"]=item_row.get("Hourly Charge",0)
+                            current_row+=1
+                # Non-special tools
                 for item in df_tools_section["Specification 1"]:
                     if item not in sum(special_cases_section.values(), []):
-                        item_row = df_tools_section[df_tools_section["Specification 1"] == item].iloc[0]
-                        df_to_write.loc[row_idx] = [
-                            item_row["Reference"], item_row["Specification 1"], item_row["Specification 2"],
-                            item_row["Daily Rate"], item_row["Monthly Rate"], item_row["Depth Charge (per ft)"],
-                            item_row["Survey Charge (per ft)"], item_row["Flat Rate"], item_row.get("Hourly Charge",0)
-                        ]
-                        row_idx += 1
-
-                df_to_write.to_excel(writer, sheet_name=sheet_name, index=False, startrow=0)
-
-            writer.save()
+                        item_rows=df_tools_section[df_tools_section["Specification 1"]==item]
+                        if not item_rows.empty:
+                            item_row=item_rows.iloc[0]
+                            ws[f"B{current_row}"]=item_row.get("Reference","")
+                            ws[f"C{current_row}"]=item_row.get("Specification 1","")
+                            ws[f"D{current_row}"]=item_row.get("Specification 2","")
+                            ws[f"E{current_row}"]=item_row.get("Daily Rate",0)
+                            ws[f"F{current_row}"]=item_row.get("Monthly Rate",0)
+                            ws[f"G{current_row}"]=item_row.get("Depth Charge (per ft)",0)
+                            ws[f"H{current_row}"]=item_row.get("Survey Charge (per ft)",0)
+                            ws[f"I{current_row}"]=item_row.get("Flat Rate",0)
+                            ws[f"J{current_row}"]=item_row.get("Hourly Charge",0)
+                            current_row+=1
         output.seek(0)
-        st.download_button("Download Excel", data=output, file_name="Cost_Estimate.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.download_button(
+            "Download Cost Estimate Excel",
+            data=output,
+            file_name="Cost_Estimate.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
