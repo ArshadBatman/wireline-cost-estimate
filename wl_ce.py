@@ -211,109 +211,152 @@ if uploaded_file:
         st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
 
     # --- Excel Download ---
-    if st.button("Download Cost Estimate Excel"):
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            for hole_size, used_special_cases, df_tools_section, special_cases_section in all_calc_dfs_for_excel:
-                sheet_name = f'{hole_size}" Hole'
-                wb = writer.book
-                ws = wb.create_sheet(title=sheet_name)
-                # --- Header rows ---
-                ws.merge_cells("B2:B4"); ws["B2"]="Reference"
-                ws.merge_cells("C2:C4"); ws["C2"]="Specification 1"
-                ws.merge_cells("D2:D4"); ws["D2"]="Specification 2"
-                ws.merge_cells("E2:J2"); ws["E2"]="Unit Price"
-                ws.merge_cells("E3:F3"); ws["E3"]="Rental Price"
-                ws.merge_cells("G3:J3"); ws["G3"]="Operating Charge"
-                ws["E4"]="Daily Rate"; ws["F4"]="Monthly Rate"; ws["G4"]="Depth Charge (per ft)"
-                ws["H4"]="Survey Charge (per ft)"; ws["I4"]="Flat Charge"; ws["J4"]="Hourly Charge"
-                
-                 # --- Add Operation Estimated Section ---
-                ws.merge_cells("K2:Q2"); ws["K2"] = "Operation Estimated"
-                ws.merge_cells("K3:K4"); ws["K3"] = "Quantity of Tools"
+if st.button("Download Cost Estimate Excel"):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        for hole_size, used_special_cases, df_tools_section, special_cases_section in all_calc_dfs_for_excel:
+            sheet_name = f'{hole_size}" Hole'
+            wb = writer.book
+            ws = wb.create_sheet(title=sheet_name)
 
-                ws.merge_cells("L3:M3"); ws["L3"] = "Rental Parameters"
-                ws["L4"] = "Total Days"; ws["M4"] = "Total Months"
+            # --- Header rows ---
+            ws.merge_cells("B2:B4"); ws["B2"]="Reference"
+            ws.merge_cells("C2:C4"); ws["C2"]="Specification 1"
+            ws.merge_cells("D2:D4"); ws["D2"]="Specification 2"
+            ws.merge_cells("E2:J2"); ws["E2"]="Unit Price / Operating Charge"
+            ws.merge_cells("E3:F3"); ws["E3"]="Rental Price"
+            ws.merge_cells("G3:J3"); ws["G3"]="Operating Charge"
+            ws["E4"]="Daily Rate"; ws["F4"]="Monthly Rate"; ws["G4"]="Depth Charge (per ft)"
+            ws["H4"]="Survey Charge (per ft)"; ws["I4"]="Flat Charge"; ws["J4"]="Hourly Charge"
 
-                ws.merge_cells("N3:Q3"); ws["N3"] = "Operating Parameters"
-                ws["N4"] = "Total Depth (ft)"
-                ws["O4"] = "Total Survey (ft)"
-                ws["P4"] = "Total Flat Charge (ft)"
-                ws["Q4"] = "Total Hours"
+            # --- Operation Estimated Section ---
+            ws.merge_cells("K2:Q2"); ws["K2"] = "Operation Estimated"
+            ws.merge_cells("K3:K4"); ws["K3"] = "Quantity of Tools"
+            ws.merge_cells("L3:M3"); ws["L3"] = "Rental Parameters"
+            ws["L4"] = "Total Days"; ws["M4"] = "Total Months"
+            ws.merge_cells("N3:Q3"); ws["N3"] = "Operating Parameters"
+            ws["N4"] = "Total Depth (ft)"; ws["O4"] = "Total Survey (ft)"
+            ws["P4"] = "Total Flat Charge (ft)"; ws["Q4"] = "Total Hours"
+            ws.merge_cells("R2:R4"); ws["R2"] = "Discount (%)"
 
-                ws.merge_cells("R2:R4"); ws["R2"] = "Discount (%)"
-                 # --- Alignment ---
-                for row in ws["B2:R4"]:
-                    for cell in row:
-                        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-                        cell.fill = PatternFill(start_color="D9EAD3", end_color="D9EAD3", fill_type="solid")
+            # --- Total / Grand Total / Break Down ---
+            ws.merge_cells("S2:S4"); ws["S2"] = "Total (MYR)"
+            ws.merge_cells("T2:T4"); ws["T2"] = "Grand Total Price (MYR)"
+            ws.merge_cells("U2:U3"); ws["U2"] = "Break Down"; ws["U4"] = "Rental Charge (MYR)"
+            ws.merge_cells("V2:V3"); ws["V2"] = "Break Down"; ws["V4"] = "Operating Charge (MYR)"
 
-                current_row = 5
+            # --- Alignment for header ---
+            for row in ws["B2:V4"]:
+                for cell in row:
+                    cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                    cell.fill = PatternFill(start_color="D9EAD3", end_color="D9EAD3", fill_type="solid")
 
-                # --- Insert data for tools ---
-                for sc in used_special_cases:
-                    ws[f"B{current_row}"] = sc
-                    ws[f"B{current_row}"].fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                    ws[f"B{current_row}"].alignment = Alignment(horizontal="center")
-                    current_row += 1
-                    for item in special_cases_section[sc]:
-                        item_rows = df_tools_section[df_tools_section["Specification 1"] == item]
-                        if not item_rows.empty:
-                            item_row = item_rows.iloc[0]
-                            ws[f"B{current_row}"] = item_row.get("Reference", "")
-                            ws[f"C{current_row}"] = item_row.get("Specification 1", "")
-                            ws[f"D{current_row}"] = item_row.get("Specification 2", "")
-                            ws[f"E{current_row}"] = item_row.get("Daily Rate", 0)
-                            ws[f"F{current_row}"] = item_row.get("Monthly Rate", 0)
-                            ws[f"G{current_row}"] = item_row.get("Depth Charge (per ft)", 0)
-                            ws[f"H{current_row}"] = item_row.get("Survey Charge (per ft)", 0)
-                            ws[f"I{current_row}"] = item_row.get("Flat Rate", 0)
-                            ws[f"J{current_row}"] = item_row.get("Hourly Charge", 0)
+            current_row = 5
 
-                            # Insert operation parameters from user inputs
-                            ws[f"K{current_row}"] = st.session_state.get(f"qty_{hole_size}", 0)
-                            ws[f"L{current_row}"] = st.session_state.get(f"days_{hole_size}", 0)
-                            ws[f"M{current_row}"] = st.session_state.get(f"months_{hole_size}", 0)
-                            ws[f"N{current_row}"] = st.session_state.get(f"depth_{hole_size}", 0)
-                            ws[f"O{current_row}"] = st.session_state.get(f"survey_{hole_size}", 0)
-                            ws[f"P{current_row}"] = ws[f"I{current_row}"].value if ws[f"I{current_row}"].value else 0
-                            ws[f"Q{current_row}"] = st.session_state.get(f"hours_{hole_size}", 0)
-                            ws[f"R{current_row}"] = st.session_state.get(f"disc_{hole_size}", 0) * 100
-                            current_row += 1
+            # --- Insert data for tools ---
+            for sc in used_special_cases:
+                ws[f"B{current_row}"] = sc
+                ws[f"B{current_row}"].fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                ws[f"B{current_row}"].alignment = Alignment(horizontal="center")
+                current_row += 1
+                for item in special_cases_section[sc]:
+                    item_rows = df_tools_section[df_tools_section["Specification 1"] == item]
+                    if not item_rows.empty:
+                        item_row = item_rows.iloc[0]
+                        ws[f"B{current_row}"] = item_row.get("Reference", "")
+                        ws[f"C{current_row}"] = item_row.get("Specification 1", "")
+                        ws[f"D{current_row}"] = item_row.get("Specification 2", "")
+                        ws[f"E{current_row}"] = item_row.get("Daily Rate", 0)
+                        ws[f"F{current_row}"] = item_row.get("Monthly Rate", 0)
+                        ws[f"G{current_row}"] = item_row.get("Depth Charge (per ft)", 0)
+                        ws[f"H{current_row}"] = item_row.get("Survey Charge (per ft)", 0)
+                        ws[f"I{current_row}"] = item_row.get("Flat Rate", 0)
+                        ws[f"J{current_row}"] = item_row.get("Hourly Charge", 0)
 
-                # Non-special tools
-                for item in df_tools_section["Specification 1"]:
-                    if item not in sum(special_cases_section.values(), []):
-                        item_rows = df_tools_section[df_tools_section["Specification 1"] == item]
-                        if not item_rows.empty:
-                            item_row = item_rows.iloc[0]
-                            ws[f"B{current_row}"] = item_row.get("Reference", "")
-                            ws[f"C{current_row}"] = item_row.get("Specification 1", "")
-                            ws[f"D{current_row}"] = item_row.get("Specification 2", "")
-                            ws[f"E{current_row}"] = item_row.get("Daily Rate", 0)
-                            ws[f"F{current_row}"] = item_row.get("Monthly Rate", 0)
-                            ws[f"G{current_row}"] = item_row.get("Depth Charge (per ft)", 0)
-                            ws[f"H{current_row}"] = item_row.get("Survey Charge (per ft)", 0)
-                            ws[f"I{current_row}"] = item_row.get("Flat Rate", 0)
-                            ws[f"J{current_row}"] = item_row.get("Hourly Charge", 0)
+                        # --- Operation Estimated values ---
+                        qty = st.session_state.get(f"qty_{hole_size}", 0)
+                        total_days = st.session_state.get(f"days_{hole_size}", 0)
+                        total_months = st.session_state.get(f"months_{hole_size}", 0)
+                        total_depth = st.session_state.get(f"depth_{hole_size}", 0)
+                        total_survey = st.session_state.get(f"survey_{hole_size}", 0)
+                        total_hours = st.session_state.get(f"hours_{hole_size}", 0)
+                        discount_pct = st.session_state.get(f"disc_{hole_size}", 0)
 
-                            # Insert operation parameters from user inputs
-                            ws[f"K{current_row}"] = st.session_state.get(f"qty_{hole_size}", 0)
-                            ws[f"L{current_row}"] = st.session_state.get(f"days_{hole_size}", 0)
-                            ws[f"M{current_row}"] = st.session_state.get(f"months_{hole_size}", 0)
-                            ws[f"N{current_row}"] = st.session_state.get(f"depth_{hole_size}", 0)
-                            ws[f"O{current_row}"] = st.session_state.get(f"survey_{hole_size}", 0)
-                            ws[f"P{current_row}"] = ws[f"I{current_row}"].value if ws[f"I{current_row}"].value else 0
-                            ws[f"Q{current_row}"] = st.session_state.get(f"hours_{hole_size}", 0)
-                            ws[f"R{current_row}"] = st.session_state.get(f"disc_{hole_size}", 0) * 100
-                            current_row += 1
+                        ws[f"K{current_row}"] = qty
+                        ws[f"L{current_row}"] = total_days
+                        ws[f"M{current_row}"] = total_months
+                        ws[f"N{current_row}"] = total_depth
+                        ws[f"O{current_row}"] = total_survey
+                        ws[f"P{current_row}"] = ws[f"I{current_row}"].value if ws[f"I{current_row}"].value else 0
+                        ws[f"Q{current_row}"] = total_hours
+                        ws[f"R{current_row}"] = discount_pct * 100
 
-        output.seek(0)
-        st.download_button(
-            "Download Cost Estimate Excel",
-            data=output,
-            file_name="Cost_Estimate.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+                        # --- Total / Grand Total / Break Down ---
+                        rental_charge = qty * ((item_row.get("Daily Rate",0) * total_days) + (item_row.get("Monthly Rate",0) * total_months)) * (1 - discount_pct)
+                        operating_charge = ((item_row.get("Depth Charge (per ft)",0) * total_depth) + 
+                                            (item_row.get("Survey Charge (per ft)",0) * total_survey) +
+                                            (item_row.get("Flat Rate",0)) +
+                                            (item_row.get("Hourly Charge",0) * total_hours)) * (1 - discount_pct)
+                        total_myr = rental_charge + operating_charge
 
+                        ws[f"S{current_row}"] = total_myr
+                        ws[f"T{current_row}"] = f"=SUM(S5:S{current_row})"  # will calculate Grand Total in Excel
+                        ws[f"U{current_row}"] = rental_charge
+                        ws[f"V{current_row}"] = operating_charge
 
+                        current_row += 1
+
+            # Non-special tools
+            for item in df_tools_section["Specification 1"]:
+                if item not in sum(special_cases_section.values(), []):
+                    item_rows = df_tools_section[df_tools_section["Specification 1"] == item]
+                    if not item_rows.empty:
+                        item_row = item_rows.iloc[0]
+                        ws[f"B{current_row}"] = item_row.get("Reference", "")
+                        ws[f"C{current_row}"] = item_row.get("Specification 1", "")
+                        ws[f"D{current_row}"] = item_row.get("Specification 2", "")
+                        ws[f"E{current_row}"] = item_row.get("Daily Rate", 0)
+                        ws[f"F{current_row}"] = item_row.get("Monthly Rate", 0)
+                        ws[f"G{current_row}"] = item_row.get("Depth Charge (per ft)", 0)
+                        ws[f"H{current_row}"] = item_row.get("Survey Charge (per ft)", 0)
+                        ws[f"I{current_row}"] = item_row.get("Flat Rate", 0)
+                        ws[f"J{current_row}"] = item_row.get("Hourly Charge", 0)
+
+                        # --- Operation Estimated values ---
+                        qty = st.session_state.get(f"qty_{hole_size}", 0)
+                        total_days = st.session_state.get(f"days_{hole_size}", 0)
+                        total_months = st.session_state.get(f"months_{hole_size}", 0)
+                        total_depth = st.session_state.get(f"depth_{hole_size}", 0)
+                        total_survey = st.session_state.get(f"survey_{hole_size}", 0)
+                        total_hours = st.session_state.get(f"hours_{hole_size}", 0)
+                        discount_pct = st.session_state.get(f"disc_{hole_size}", 0)
+
+                        ws[f"K{current_row}"] = qty
+                        ws[f"L{current_row}"] = total_days
+                        ws[f"M{current_row}"] = total_months
+                        ws[f"N{current_row}"] = total_depth
+                        ws[f"O{current_row}"] = total_survey
+                        ws[f"P{current_row}"] = ws[f"I{current_row}"].value if ws[f"I{current_row}"].value else 0
+                        ws[f"Q{current_row}"] = total_hours
+                        ws[f"R{current_row}"] = discount_pct * 100
+
+                        rental_charge = qty * ((item_row.get("Daily Rate",0) * total_days) + (item_row.get("Monthly Rate",0) * total_months)) * (1 - discount_pct)
+                        operating_charge = ((item_row.get("Depth Charge (per ft)",0) * total_depth) + 
+                                            (item_row.get("Survey Charge (per ft)",0) * total_survey) +
+                                            (item_row.get("Flat Rate",0)) +
+                                            (item_row.get("Hourly Charge",0) * total_hours)) * (1 - discount_pct)
+                        total_myr = rental_charge + operating_charge
+
+                        ws[f"S{current_row}"] = total_myr
+                        ws[f"T{current_row}"] = f"=SUM(S5:S{current_row})"
+                        ws[f"U{current_row}"] = rental_charge
+                        ws[f"V{current_row}"] = operating_charge
+                        current_row += 1
+
+    output.seek(0)
+    st.download_button(
+        "Download Cost Estimate Excel",
+        data=output,
+        file_name="Cost_Estimate.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
