@@ -243,7 +243,7 @@ if uploaded_file:
                 ws["P4"] = "Total Flat Charge (ft)"
                 ws["Q4"] = "Total Hours"
 
-                ws.merge_cells("R2:R4"); ws["R2"] = "Discount (%)
+                ws.merge_cells("R2:R4"); ws["R2"] = "Discount (%)"
                  # --- Alignment ---
                 for row in ws["B2:R4"]:
                     for cell in row:
@@ -317,3 +317,4 @@ if uploaded_file:
             file_name="Cost_Estimate.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
