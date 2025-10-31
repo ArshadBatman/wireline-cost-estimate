@@ -69,7 +69,10 @@ if uploaded_file:
             code_list = df_service["Specification 1"].dropna().unique().tolist()
             special_cases_map = {
                 "STANDARD WELLS": {
-                    "PEX-AIT (150DegC Max)": ["AU14: AUX_SURELOC","NE1: NEUT_THER","DE1: DENS_FULL","RE1: RES_INDU"],
+                    "PEX-AIT (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","NE1: NEUT_THER","DE1: DENS_FULL","RE1: RES_INDU"],
+                    "PEX-AIT-DSI (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","NE1: NEUT_THER","DE1: DENS_FULL","RE1: RES_INDU",
+                                                 "AU3:AUX_INCL", "AU2: AUX_PCAL", "AU2: AUX_PCAL", "AC3: ACOU_3", "PP7: PROC_PETR7", "PA7: PROC_ACOU6",
+                                                 "PA11: PROC_ACOU13", "PA12: PROC_ACOU14],
                     "DOBMI (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL","AC3: ACOU_3",
                                             "AU2: AUX_PCAL","AU2: AUX_PCAL","PP7: PROC_PETR7","PA7: PROC_ACOU6",
                                             "PA11: PROC_ACOU13","PA12: PROC_ACOU14","IM3: IMAG_SOBM","PI1: PROC_IMAG1",
@@ -212,4 +215,5 @@ if uploaded_file:
     if section_totals:
         grand_total = sum(section_totals.values())
         st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
+
 
