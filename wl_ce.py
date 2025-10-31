@@ -1,5 +1,8 @@
 import streamlit as st
 import pandas as pd
+import io
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font
 
 st.title("SMARTLog: Wireline Cost Estimator")
 
@@ -11,7 +14,6 @@ if uploaded_file:
         st.session_state["unique_tracker"] = set()
         st.session_state["last_uploaded_name"] = uploaded_file.name
 
-    # Optional manual reset button
     if st.sidebar.button("Reset unique-tool usage (AU14, etc.)", key="reset_unique"):
         st.session_state["unique_tracker"] = set()
         st.sidebar.success("Unique-tool tracker cleared.")
@@ -19,15 +21,13 @@ if uploaded_file:
     # Read data
     df = pd.read_excel(uploaded_file, sheet_name="Data")
 
-    # Ensure required columns exist
     for col in ["Flat Rate", "Depth Charge (per ft)", "Source"]:
         if col not in df.columns:
             df[col] = 0 if "Rate" in col else "Data"
 
-    # Unique tools across sections
     unique_tools = {"AU14: AUX_SURELOC"}
 
-    # --- Dynamic Hole Section Setup ---
+    # --- Dynamic Hole Sections ---
     st.sidebar.header("Hole Sections Setup")
     num_sections = st.sidebar.number_input("Number of Hole Sections", min_value=1, max_value=5, value=2, step=1)
     hole_sizes = []
@@ -35,11 +35,10 @@ if uploaded_file:
         hole_size = st.sidebar.text_input(f"Hole Section {i+1} Size (inches)", value=f"{12.25 - i*3.75:.2f}")
         hole_sizes.append(hole_size)
 
-    # Create dynamic tabs
     tabs = st.tabs([f'{hs}" Hole Section' for hs in hole_sizes])
     section_totals = {}
 
-    # --- Loop for each hole section ---
+    # --- Main Loop per Section ---
     for tab, hole_size in zip(tabs, hole_sizes):
         with tab:
             st.header(f'{hole_size}" Hole Section')
@@ -78,7 +77,7 @@ if uploaded_file:
                                             "PA11: PROC_ACOU13","PA12: PROC_ACOU14","IM3: IMAG_SOBM","PI1: PROC_IMAG1",
                                             "PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8","PI9: PROC_IMAG9",
                                             "PI12: PROC_IMAG12","PI13: PROC_IMAG13"],
-                    "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","FP25: FPS_SCAR","FP25: FPS_SCAR",
+                    "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)": ["AU14: AUX_SURELOC","FP25: FPS_SCAR","FP25: FPS_SCAR",
                                                                       "FP18: FPS_SAMP","FP19: FPS_SPHA","FP23: FPS_TRA",
                                                                       "FP24: FPS_TRK","FP28: FPS_FCHA_1","FP33: FPS_FCHA_6",
                                                                       "FP34: FPS_FCHA_7","FP14: FPS_PUMP","FP14: FPS_PUMP",
@@ -107,24 +106,21 @@ if uploaded_file:
 
             df_tools = df_service[df_service["Specification 1"].isin(expanded_codes)].copy()
 
-            # --- Build Display Table with Proper Dividers ---
-            if not df_tools.empty and used_special_cases:
+            # --- Divider Row Logic ---
+            if not df_tools.empty:
                 display_rows = []
+                inserted_dividers = {sc: False for sc in used_special_cases}
 
                 for sc in used_special_cases:
-                    # Divider row
                     divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
                     divider["Specification 1"] = f"--- {sc} ---"
                     display_rows.append(divider)
-
-                    # Line items for this special case (duplicates allowed)
                     sc_items = df_tools[df_tools["Specification 1"].isin(special_cases[sc])]
-                    display_rows.append(sc_items)
+                    for _, row in sc_items.iterrows():
+                        display_rows.append(row.to_frame().T)
 
-                # Final display table
                 display_df = pd.concat(display_rows, ignore_index=True)
 
-                # Style divider row
                 def highlight_divider(row):
                     if str(row["Specification 1"]).startswith("---"):
                         return ["background-color: red; color: white"] * len(row)
@@ -149,11 +145,10 @@ if uploaded_file:
                 calc_df["Survey Charge (per ft)"] = 0
                 calc_df["Hourly Charge"] = 0
 
-                # Editable column
                 calc_df["User Flat Charge"] = calc_df["Flat Rate"].apply(lambda x: 1 if x > 0 else 0)
                 calc_df = st.data_editor(calc_df, num_rows="dynamic", key=f"editor_{hole_size}")
 
-                # Operation params
+                # Params
                 calc_df["Quantity of Tools"] = quantity_tools
                 calc_df["Total Days"] = total_days
                 calc_df["Total Months"] = total_months
@@ -162,7 +157,7 @@ if uploaded_file:
                 calc_df["Total Hours"] = total_hours
                 calc_df["Discount (%)"] = discount * 100
 
-                # Charges before duplicate handling
+                # Charges calculation
                 calc_df["Operating Charge (MYR)"] = (
                     (calc_df["Depth Charge (per ft)"] * total_depth) +
                     (calc_df["Survey Charge (per ft)"] * total_survey) +
@@ -175,7 +170,7 @@ if uploaded_file:
                     ((calc_df["Daily Rate"] * total_days) + (calc_df["Monthly Rate"] * total_months))
                 ) * (1 - discount)
 
-                # Unique-tool duplication logic
+                # Unique tool duplication
                 calc_df["Is Duplicate Unique Tool"] = False
                 calc_df["Status"] = "Charged"
                 tracker = set(st.session_state.get("unique_tracker", set()))
@@ -197,7 +192,7 @@ if uploaded_file:
 
                 st.session_state["unique_tracker"] = tracker
 
-                # Total per row and section
+                # Total
                 calc_df["Total (MYR)"] = calc_df["Operating Charge (MYR)"] + calc_df["Rental Charge (MYR)"]
                 cols = list(calc_df.columns)
                 if "Status" in cols:
@@ -210,8 +205,59 @@ if uploaded_file:
                 section_totals[hole_size] = section_total
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
 
-    # --- Grand Total ---
+    # --- Grand Total + Download ---
     if section_totals:
         grand_total = sum(section_totals.values())
         st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
 
+        # Generate Excel
+        def generate_excel(calc_df, used_special_cases, special_cases):
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Cost Estimate"
+
+            # Header with merges
+            ws.merge_cells("B2:B4"); ws["B2"] = "Reference"
+            ws.merge_cells("C2:C4"); ws["C2"] = "Specification 1"
+            ws.merge_cells("D2:D4"); ws["D2"] = "Specification 2"
+            ws.merge_cells("E2:F2"); ws["E2"] = "Unit Price"
+            ws["E3"], ws["F3"] = "Daily Rate", "Monthly Rate"
+            ws.merge_cells("G2:J2"); ws["G2"] = "Operating Charge"
+            ws["G3"], ws["H3"], ws["I3"], ws["J3"] = "Depth Charge (per ft)", "Survey Charge (per ft)", "Flat Charge", "Hourly Charge"
+
+            for row in ws["B2:J4"]:
+                for cell in row:
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
+                    cell.font = Font(bold=True)
+
+            current_row = 5
+            for sc in used_special_cases:
+                ws[f"B{current_row}"] = sc
+                ws[f"B{current_row}"].font = Font(bold=True)
+                current_row += 1
+
+                sc_items = calc_df[calc_df["Code"].isin(special_cases[sc])]
+                for _, row in sc_items.iterrows():
+                    ws[f"B{current_row}"] = row["Ref Item"]
+                    ws[f"C{current_row}"] = row["Code"]
+                    ws[f"D{current_row}"] = row["Items"]
+                    ws[f"E{current_row}"] = row["Daily Rate"]
+                    ws[f"F{current_row}"] = row["Monthly Rate"]
+                    ws[f"G{current_row}"] = row["Depth Charge (per ft)"]
+                    ws[f"H{current_row}"] = row["Survey Charge (per ft)"]
+                    ws[f"I{current_row}"] = row["Flat Rate"]
+                    ws[f"J{current_row}"] = row["Hourly Charge"]
+                    current_row += 1
+
+            output = io.BytesIO()
+            wb.save(output)
+            return output
+
+        excel_data = generate_excel(calc_df, used_special_cases, special_cases)
+
+        st.download_button(
+            label="📥 Download Cost Estimate",
+            data=excel_data.getvalue(),
+            file_name=f"Cost_Estimate_{selected_package}_{selected_service}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
