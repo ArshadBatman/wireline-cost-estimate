@@ -210,7 +210,7 @@ if uploaded_file:
         grand_total = sum(section_totals.values())
         st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
 
-    # --- Excel Download ---
+# --- Excel Download ---
 if st.button("Download Cost Estimate Excel"):
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
@@ -253,9 +253,9 @@ if st.button("Download Cost Estimate Excel"):
 
             current_row = 5
 
-            # --- Insert data for tools ---
+            # --- Insert data for special cases with Hole Section in divider ---
             for sc in used_special_cases:
-                ws[f"B{current_row}"] = sc
+                ws[f"B{current_row}"] = f'{hole_size}in Section: {sc}'
                 ws[f"B{current_row}"].fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                 ws[f"B{current_row}"].alignment = Alignment(horizontal="center")
                 current_row += 1
@@ -273,56 +273,7 @@ if st.button("Download Cost Estimate Excel"):
                         ws[f"I{current_row}"] = item_row.get("Flat Rate", 0)
                         ws[f"J{current_row}"] = item_row.get("Hourly Charge", 0)
 
-                        # --- Operation Estimated values ---
-                        qty = st.session_state.get(f"qty_{hole_size}", 0)
-                        total_days = st.session_state.get(f"days_{hole_size}", 0)
-                        total_months = st.session_state.get(f"months_{hole_size}", 0)
-                        total_depth = st.session_state.get(f"depth_{hole_size}", 0)
-                        total_survey = st.session_state.get(f"survey_{hole_size}", 0)
-                        total_hours = st.session_state.get(f"hours_{hole_size}", 0)
-                        discount_pct = st.session_state.get(f"disc_{hole_size}", 0)
-
-                        ws[f"K{current_row}"] = qty
-                        ws[f"L{current_row}"] = total_days
-                        ws[f"M{current_row}"] = total_months
-                        ws[f"N{current_row}"] = total_depth
-                        ws[f"O{current_row}"] = total_survey
-                        ws[f"P{current_row}"] = ws[f"I{current_row}"].value if ws[f"I{current_row}"].value else 0
-                        ws[f"Q{current_row}"] = total_hours
-                        ws[f"R{current_row}"] = discount_pct * 100
-
-                        # --- Total / Grand Total / Break Down ---
-                        rental_charge = qty * ((item_row.get("Daily Rate",0) * total_days) + (item_row.get("Monthly Rate",0) * total_months)) * (1 - discount_pct)
-                        operating_charge = ((item_row.get("Depth Charge (per ft)",0) * total_depth) + 
-                                            (item_row.get("Survey Charge (per ft)",0) * total_survey) +
-                                            (item_row.get("Flat Rate",0)) +
-                                            (item_row.get("Hourly Charge",0) * total_hours)) * (1 - discount_pct)
-                        total_myr = rental_charge + operating_charge
-
-                        ws[f"S{current_row}"] = total_myr
-                        ws[f"T{current_row}"] = f"=SUM(S5:S{current_row})"  # will calculate Grand Total in Excel
-                        ws[f"U{current_row}"] = rental_charge
-                        ws[f"V{current_row}"] = operating_charge
-
-                        current_row += 1
-
-            # Non-special tools
-            for item in df_tools_section["Specification 1"]:
-                if item not in sum(special_cases_section.values(), []):
-                    item_rows = df_tools_section[df_tools_section["Specification 1"] == item]
-                    if not item_rows.empty:
-                        item_row = item_rows.iloc[0]
-                        ws[f"B{current_row}"] = item_row.get("Reference", "")
-                        ws[f"C{current_row}"] = item_row.get("Specification 1", "")
-                        ws[f"D{current_row}"] = item_row.get("Specification 2", "")
-                        ws[f"E{current_row}"] = item_row.get("Daily Rate", 0)
-                        ws[f"F{current_row}"] = item_row.get("Monthly Rate", 0)
-                        ws[f"G{current_row}"] = item_row.get("Depth Charge (per ft)", 0)
-                        ws[f"H{current_row}"] = item_row.get("Survey Charge (per ft)", 0)
-                        ws[f"I{current_row}"] = item_row.get("Flat Rate", 0)
-                        ws[f"J{current_row}"] = item_row.get("Hourly Charge", 0)
-
-                        # --- Operation Estimated values ---
+                        # --- Operation Estimated values from Streamlit ---
                         qty = st.session_state.get(f"qty_{hole_size}", 0)
                         total_days = st.session_state.get(f"days_{hole_size}", 0)
                         total_months = st.session_state.get(f"months_{hole_size}", 0)
@@ -351,6 +302,51 @@ if st.button("Download Cost Estimate Excel"):
                         ws[f"T{current_row}"] = f"=SUM(S5:S{current_row})"
                         ws[f"U{current_row}"] = rental_charge
                         ws[f"V{current_row}"] = operating_charge
+
+                        current_row += 1
+
+            # --- Non-special tools with Hole Section divider ---
+            non_special_tools = [item for item in df_tools_section["Specification 1"] if item not in sum(special_cases_section.values(), [])]
+            if non_special_tools:
+                ws[f"B{current_row}"] = f'{hole_size}in Section: Other Tools'
+                ws[f"B{current_row}"].fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                ws[f"B{current_row}"].alignment = Alignment(horizontal="center")
+                current_row += 1
+                for item in non_special_tools:
+                    item_rows = df_tools_section[df_tools_section["Specification 1"] == item]
+                    if not item_rows.empty:
+                        item_row = item_rows.iloc[0]
+                        ws[f"B{current_row}"] = item_row.get("Reference", "")
+                        ws[f"C{current_row}"] = item_row.get("Specification 1", "")
+                        ws[f"D{current_row}"] = item_row.get("Specification 2", "")
+                        ws[f"E{current_row}"] = item_row.get("Daily Rate", 0)
+                        ws[f"F{current_row}"] = item_row.get("Monthly Rate", 0)
+                        ws[f"G{current_row}"] = item_row.get("Depth Charge (per ft)", 0)
+                        ws[f"H{current_row}"] = item_row.get("Survey Charge (per ft)", 0)
+                        ws[f"I{current_row}"] = item_row.get("Flat Rate", 0)
+                        ws[f"J{current_row}"] = item_row.get("Hourly Charge", 0)
+
+                        ws[f"K{current_row}"] = qty
+                        ws[f"L{current_row}"] = total_days
+                        ws[f"M{current_row}"] = total_months
+                        ws[f"N{current_row}"] = total_depth
+                        ws[f"O{current_row}"] = total_survey
+                        ws[f"P{current_row}"] = ws[f"I{current_row}"].value if ws[f"I{current_row}"].value else 0
+                        ws[f"Q{current_row}"] = total_hours
+                        ws[f"R{current_row}"] = discount_pct * 100
+
+                        rental_charge = qty * ((item_row.get("Daily Rate",0) * total_days) + (item_row.get("Monthly Rate",0) * total_months)) * (1 - discount_pct)
+                        operating_charge = ((item_row.get("Depth Charge (per ft)",0) * total_depth) + 
+                                            (item_row.get("Survey Charge (per ft)",0) * total_survey) +
+                                            (item_row.get("Flat Rate",0)) +
+                                            (item_row.get("Hourly Charge",0) * total_hours)) * (1 - discount_pct)
+                        total_myr = rental_charge + operating_charge
+
+                        ws[f"S{current_row}"] = total_myr
+                        ws[f"T{current_row}"] = f"=SUM(S5:S{current_row})"
+                        ws[f"U{current_row}"] = rental_charge
+                        ws[f"V{current_row}"] = operating_charge
+
                         current_row += 1
 
     output.seek(0)
