@@ -1,3 +1,5 @@
+this is the code, update this 
+
 import streamlit as st
 import pandas as pd
 from io import BytesIO
@@ -210,7 +212,7 @@ if uploaded_file:
         grand_total = sum(section_totals.values())
         st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
 
-       # --- Excel Download ---
+    # --- Excel Download ---
     if st.button("Download Cost Estimate Excel"):
         output = BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
@@ -218,18 +220,17 @@ if uploaded_file:
                 sheet_name = f'{hole_size}" Hole'
                 wb = writer.book
                 ws = wb.create_sheet(title=sheet_name)
-
                 # --- Header rows ---
                 ws.merge_cells("B2:B4"); ws["B2"]="Reference"
                 ws.merge_cells("C2:C4"); ws["C2"]="Specification 1"
                 ws.merge_cells("D2:D4"); ws["D2"]="Specification 2"
-                ws.merge_cells("E2:J2"); ws["E2"]="Unit Price / Operating Charge"
+                ws.merge_cells("E2:J2"); ws["E2"]="Unit Price"
                 ws.merge_cells("E3:F3"); ws["E3"]="Rental Price"
                 ws.merge_cells("G3:J3"); ws["G3"]="Operating Charge"
                 ws["E4"]="Daily Rate"; ws["F4"]="Monthly Rate"; ws["G4"]="Depth Charge (per ft)"
                 ws["H4"]="Survey Charge (per ft)"; ws["I4"]="Flat Charge"; ws["J4"]="Hourly Charge"
-
-                # --- Add Operation Estimated Section ---
+                
+                 # --- Add Operation Estimated Section ---
                 ws.merge_cells("K2:Q2"); ws["K2"] = "Operation Estimated"
                 ws.merge_cells("K3:K4"); ws["K3"] = "Quantity of Tools"
 
@@ -242,9 +243,8 @@ if uploaded_file:
                 ws["P4"] = "Total Flat Charge (ft)"
                 ws["Q4"] = "Total Hours"
 
-                ws.merge_cells("R2:R4"); ws["R2"] = "Discount (%)"
-
-                # --- Alignment ---
+                ws.merge_cells("R2:R4"); ws["R2"] = "Discount (%)
+                 # --- Alignment ---
                 for row in ws["B2:R4"]:
                     for cell in row:
                         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -317,5 +317,3 @@ if uploaded_file:
             file_name="Cost_Estimate.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
-
