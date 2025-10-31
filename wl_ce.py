@@ -214,10 +214,13 @@ if uploaded_file:
 if st.button("Download Cost Estimate Excel"):
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        # Remove default sheet if exists
+        writer.book.remove(writer.book.active)
+
         for hole_size, used_special_cases, df_tools_section, special_cases_section in all_calc_dfs_for_excel:
+            # Create sheet for each hole section
             sheet_name = f'{hole_size}" Hole'
-            wb = writer.book
-            ws = wb.create_sheet(title=sheet_name)
+            ws = writer.book.create_sheet(title=sheet_name)
 
             # --- Header rows ---
             ws.merge_cells("B2:B4"); ws["B2"]="Reference"
@@ -252,7 +255,8 @@ if st.button("Download Cost Estimate Excel"):
                     cell.fill = PatternFill(start_color="D9EAD3", end_color="D9EAD3", fill_type="solid")
 
             current_row = 5
-            # Read hole section parameters
+
+            # Read hole section parameters for this sheet
             qty = st.session_state.get(f"qty_{hole_size}", 0)
             total_days = st.session_state.get(f"days_{hole_size}", 0)
             total_months = st.session_state.get(f"months_{hole_size}", 0)
@@ -263,28 +267,25 @@ if st.button("Download Cost Estimate Excel"):
 
             # --- Insert special case tools ---
             for sc in used_special_cases:
-                # Divider includes Hole Section
                 ws[f"B{current_row}"] = f'{hole_size}in Section: {sc}'
                 ws[f"B{current_row}"].fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                 ws[f"B{current_row}"].alignment = Alignment(horizontal="center")
                 current_row += 1
                 for item in special_cases_section[sc]:
-                    item_rows = df_tools_section[df_tools_section["Specification 1"] == item]
+                    item_rows = df_tools_section[df_tools_section["Specification 1"]==item]
                     if not item_rows.empty:
                         item_row = item_rows.iloc[0]
-                        # Basic tool info
-                        ws[f"B{current_row}"] = item_row.get("Reference", "")
-                        ws[f"C{current_row}"] = item_row.get("Specification 1", "")
-                        ws[f"D{current_row}"] = item_row.get("Specification 2", "")
-                        ws[f"E{current_row}"] = item_row.get("Daily Rate", 0)
-                        ws[f"F{current_row}"] = item_row.get("Monthly Rate", 0)
-                        ws[f"G{current_row}"] = item_row.get("Depth Charge (per ft)", 0)
-                        ws[f"H{current_row}"] = item_row.get("Survey Charge (per ft)", 0)
-                        ws[f"I{current_row}"] = item_row.get("Flat Rate", 0)
-                        ws[f"J{current_row}"] = item_row.get("Hourly Charge", 0)
+                        ws[f"B{current_row}"] = item_row.get("Reference","")
+                        ws[f"C{current_row}"] = item_row.get("Specification 1","")
+                        ws[f"D{current_row}"] = item_row.get("Specification 2","")
+                        ws[f"E{current_row}"] = item_row.get("Daily Rate",0)
+                        ws[f"F{current_row}"] = item_row.get("Monthly Rate",0)
+                        ws[f"G{current_row}"] = item_row.get("Depth Charge (per ft)",0)
+                        ws[f"H{current_row}"] = item_row.get("Survey Charge (per ft)",0)
+                        ws[f"I{current_row}"] = item_row.get("Flat Rate",0)
+                        ws[f"J{current_row}"] = item_row.get("Hourly Charge",0)
 
-                        # Calculations
-                        rental_charge = qty * ((item_row.get("Daily Rate",0)*total_days)+(item_row.get("Monthly Rate",0)*total_months))*(1-discount_pct)
+                        rental_charge = qty*((item_row.get("Daily Rate",0)*total_days)+(item_row.get("Monthly Rate",0)*total_months))*(1-discount_pct)
                         operating_charge = ((item_row.get("Depth Charge (per ft)",0)*total_depth)+
                                             (item_row.get("Survey Charge (per ft)",0)*total_survey)+
                                             item_row.get("Flat Rate",0)+
@@ -311,9 +312,9 @@ if st.button("Download Cost Estimate Excel"):
                     item_rows = df_tools_section[df_tools_section["Specification 1"]==item]
                     if not item_rows.empty:
                         item_row = item_rows.iloc[0]
-                        ws[f"B{current_row}"] = item_row.get("Reference", "")
-                        ws[f"C{current_row}"] = item_row.get("Specification 1", "")
-                        ws[f"D{current_row}"] = item_row.get("Specification 2", "")
+                        ws[f"B{current_row}"] = item_row.get("Reference","")
+                        ws[f"C{current_row}"] = item_row.get("Specification 1","")
+                        ws[f"D{current_row}"] = item_row.get("Specification 2","")
                         ws[f"E{current_row}"] = item_row.get("Daily Rate",0)
                         ws[f"F{current_row}"] = item_row.get("Monthly Rate",0)
                         ws[f"G{current_row}"] = item_row.get("Depth Charge (per ft)",0)
@@ -321,7 +322,7 @@ if st.button("Download Cost Estimate Excel"):
                         ws[f"I{current_row}"] = item_row.get("Flat Rate",0)
                         ws[f"J{current_row}"] = item_row.get("Hourly Charge",0)
 
-                        rental_charge = qty * ((item_row.get("Daily Rate",0)*total_days)+(item_row.get("Monthly Rate",0)*total_months))*(1-discount_pct)
+                        rental_charge = qty*((item_row.get("Daily Rate",0)*total_days)+(item_row.get("Monthly Rate",0)*total_months))*(1-discount_pct)
                         operating_charge = ((item_row.get("Depth Charge (per ft)",0)*total_depth)+
                                             (item_row.get("Survey Charge (per ft)",0)*total_survey)+
                                             item_row.get("Flat Rate",0)+
