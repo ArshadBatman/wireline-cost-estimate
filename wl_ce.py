@@ -78,7 +78,7 @@ if uploaded_file:
                                             "PA11: PROC_ACOU13","PA12: PROC_ACOU14","IM3: IMAG_SOBM","PI1: PROC_IMAG1",
                                             "PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8","PI9: PROC_IMAG9",
                                             "PI12: PROC_IMAG12","PI13: PROC_IMAG13"],
-                    "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)": ["AU14: AUX_SURELOC","FP25: FPS_SCAR","FP25: FPS_SCAR",
+                    "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","FP25: FPS_SCAR","FP25: FPS_SCAR",
                                                                       "FP18: FPS_SAMP","FP19: FPS_SPHA","FP23: FPS_TRA",
                                                                       "FP24: FPS_TRK","FP28: FPS_FCHA_1","FP33: FPS_FCHA_6",
                                                                       "FP34: FPS_FCHA_7","FP14: FPS_PUMP","FP14: FPS_PUMP",
@@ -214,3 +214,4 @@ if uploaded_file:
     if section_totals:
         grand_total = sum(section_totals.values())
         st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
+
