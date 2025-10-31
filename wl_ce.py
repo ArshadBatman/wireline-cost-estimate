@@ -223,7 +223,7 @@ if st.button("Download Cost Estimate Excel"):
             ws.merge_cells("B2:B4"); ws["B2"]="Reference"
             ws.merge_cells("C2:C4"); ws["C2"]="Specification 1"
             ws.merge_cells("D2:D4"); ws["D2"]="Specification 2"
-            ws.merge_cells("E2:J2"); ws["E2"]="Unit Price / Operating Charge"
+            ws.merge_cells("E2:J2"); ws["E2"]="Unit Price"
             ws.merge_cells("E3:F3"); ws["E3"]="Rental Price"
             ws.merge_cells("G3:J3"); ws["G3"]="Operating Charge"
             ws["E4"]="Daily Rate"; ws["F4"]="Monthly Rate"; ws["G4"]="Depth Charge (per ft)"
@@ -381,5 +381,6 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
