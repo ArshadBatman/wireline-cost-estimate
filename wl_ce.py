@@ -46,8 +46,8 @@ if uploaded_file:
     if well_option == "Well A":
         # Well A defaults per hole section
         well_a_defaults_per_section = {
-            '12.25': {"Package": "Package A", "Service": "Standard Wells", "qty": 2, "months": 1, "depth": 5500},
-            '8.5': {"Package": "Package A", "Service": "Standard Wells", "qty": 2, "months": 1, "depth": 8000}
+            '12.25': {"Package": "Package A", "Service Name": "Standard Wells", "qty": 2, "months": 1, "depth": 5500},
+            '8.5': {"Package": "Package A", "Service Name": "Standard Wells", "qty": 2, "months": 1, "depth": 8000}
         }
         
         for hole_size in hole_sizes:
@@ -57,9 +57,9 @@ if uploaded_file:
                 st.session_state[f"qty_{hole_size}"] = defaults["qty"]
                 st.session_state[f"months_{hole_size}"] = defaults["months"]
                 st.session_state[f"depth_{hole_size}"] = defaults["depth"]
-                # Also prefill Package and Service
+                # Also prefill Package and Service Name
                 st.session_state[f"pkg_{hole_size}"] = defaults["Package"]
-                st.session_state[f"svc_{hole_size}"] = defaults["Service"]
+                st.session_state[f"svc_{hole_size}"] = defaults["Service Name"]
                 
     # Create dynamic tabs
     tabs = st.tabs([f'{hs}" Hole Section' for hs in hole_sizes])
@@ -404,6 +404,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
