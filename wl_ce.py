@@ -69,6 +69,13 @@ if uploaded_file:
             selected_service = st.selectbox("Choose Service Name", service_options, key=f"svc_{hole_size}")
             df_service = package_df[package_df["Service Name"] == selected_service]
 
+            #Filter: include selected service + blank cells for Specification 1
+            df_service = package_df[
+                        (package_df["Service Name"] == selected_service) | 
+                        (package_df["Service Name"].isna()) | 
+                        (package_df["Service Name"] == "")
+            ]    
+
             # --- Tool selection with special cases ---
             code_list = df_service["Specification 1"].dropna().unique().tolist()
             special_cases_map = {
@@ -385,6 +392,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
