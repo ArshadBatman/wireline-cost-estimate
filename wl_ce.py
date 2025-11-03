@@ -30,62 +30,6 @@ if uploaded_file:
     # Unique tools across sections
     unique_tools = {"AU14: AUX_SURELOC"}
 
-    # --- Reference well data (user-provided template) ---
-    reference_well_data = {
-        "name": "Reference Well A",
-        "Package": "Package A",
-        "Service Name": "STANDARD WELLS",
-        "Hole Sections": {
-            '12.25" Hole': {
-                "Depth": 5500,
-                "Tools_LineItems": [
-                    # PEX-AIT (line items)
-                    "AU14: AUX_SURELOC",
-                    "NE1: NEUT_THER",
-                    "DE1: DENS_FULL",
-                    "RE1: RES_INDU",
-                    # DSI-Dual OBMI
-                    "AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL","AC3: ACOU_3","AU2: AUX_PCAL",
-                    "PP7: PROC_PETR7","PA7: PROC_ACOU6","PA11: PROC_ACOU13","PA12: PROC_ACOU14",
-                    "IM3: IMAG_SOBM","PI1: PROC_IMAG1","PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8",
-                    "PI9: PROC_IMAG9","PI12: PROC_IMAG12","PI13: PROC_IMAG13",
-                    # MDT Pretest and Sampling (FPS & others)
-                    "FP25: FPS_SCAR","FP25: FPS_SCAR","FP18: FPS_SAMP","FP19: FPS_SPHA","FP23: FPS_TRA",
-                    "FP24: FPS_TRK","FP28: FPS_FCHA_1","FP33: FPS_FCHA_6","FP34: FPS_FCHA_7","FP14: FPS_PUMP",
-                    "FP14: FPS_PUMP","FP42: FPS_PROB_XLD","FP11: FPS_PROB_FO","FP26: FPS_FCON","DT3: RTDT_PER","PPT12: PROC_PT12",
-                    # XL Rock
-                    "AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2"
-                ],
-            },
-            '8.5" Hole': {
-                "Depth": 8000,
-                "Tools_LineItems": [
-                    # Same set as 12.25"
-                    "AU14: AUX_SURELOC",
-                    "NE1: NEUT_THER",
-                    "DE1: DENS_FULL",
-                    "RE1: RES_INDU",
-                    "AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL","AC3: ACOU_3","AU2: AUX_PCAL",
-                    "PP7: PROC_PETR7","PA7: PROC_ACOU6","PA11: PROC_ACOU13","PA12: PROC_ACOU14",
-                    "IM3: IMAG_SOBM","PI1: PROC_IMAG1","PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8",
-                    "PI9: PROC_IMAG9","PI12: PROC_IMAG12","PI13: PROC_IMAG13",
-                    "FP25: FPS_SCAR","FP25: FPS_SCAR","FP18: FPS_SAMP","FP19: FPS_SPHA","FP23: FPS_TRA",
-                    "FP24: FPS_TRK","FP28: FPS_FCHA_1","FP33: FPS_FCHA_6","FP34: FPS_FCHA_7","FP14: FPS_PUMP",
-                    "FP14: FPS_PUMP","FP42: FPS_PROB_XLD","FP11: FPS_PROB_FO","FP26: FPS_FCON","DT3: RTDT_PER","PPT12: PROC_PT12",
-                    "AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2"
-                ],
-            },
-        },
-        "Additional Services_LineItems": [
-            "CO1: CONV_PCL",
-            "AU7: AUX_SBOX","PC5: PC_10KH2S","PR1: PR_FP","PR2: PR_BO","PR3: PR_TP","AU11: AUX_GRCCL","PR7: PR_CST","MS1: MS_PL","MS3: MS_JB",
-            "LU1: LUDR_ZON2","CA9: CABL_HSOH_1","CA3: CABL_HSOH","CA8: CABL_STCH_2","DT2: RTDT_SAT",
-            "PER1: PWFE","PER2: PWSO","PER3: PWOP","PER4: PWSE"
-        ],
-        "Quantity of Tools": 2,
-        "Total Months": 1
-    }
-
     # --- Dynamic Hole Section Setup ---
     st.sidebar.header("Hole Sections Setup")
     num_sections = st.sidebar.number_input("Number of Hole Sections", min_value=1, max_value=5, value=2, step=1)
@@ -99,283 +43,122 @@ if uploaded_file:
     section_totals = {}
     all_calc_dfs_for_excel = []  # store data for Excel download
 
-    # --- special_cases_map (kept from your original code) ---
-    special_cases_map = {
-        "STANDARD WELLS": {
-            "PEX-AIT (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","NE1: NEUT_THER","DE1: DENS_FULL","RE1: RES_INDU"],
-            "PEX-AIT-DSI (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","NE1: NEUT_THER","DE1: DENS_FULL","RE1: RES_INDU",
-                                         "AU3:AUX_INCL", "AU2: AUX_PCAL", "AU2: AUX_PCAL", "AC3: ACOU_3", "PP7: PROC_PETR7", "PA7: PROC_ACOU6",
-                                         "PA11: PROC_ACOU13", "PA12: PROC_ACOU14"],
-            "DOBMI (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL","AC3: ACOU_3",
-                                    "AU2: AUX_PCAL","AU2: AUX_PCAL","PP7: PROC_PETR7","PA7: PROC_ACOU6",
-                                    "PA11: PROC_ACOU13","PA12: PROC_ACOU14","IM3: IMAG_SOBM","PI1: PROC_IMAG1",
-                                    "PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8","PI9: PROC_IMAG9",
-                                    "PI12: PROC_IMAG12","PI13: PROC_IMAG13"],
-            "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)": ["AU14: AUX_SURELOC","FP25: FPS_SCAR","FP25: FPS_SCAR",
-                                                              "FP18: FPS_SAMP","FP19: FPS_SPHA","FP23: FPS_TRA",
-                                                              "FP24: FPS_TRK","FP28: FPS_FCHA_1","FP33: FPS_FCHA_6",
-                                                              "FP34: FPS_FCHA_7","FP14: FPS_PUMP","FP14: FPS_PUMP",
-                                                              "FP42: FPS_PROB_LD","FP11: FPS_PROB_FO","FP26: FPS_FCON",
-                                                              "DT3: RTDT_PER","PPT12: PROC_PT12","FP7: FPS_SPPT_2"],
-            "IBC (PowerFlex)-CBL (150DegC Max)": ["CE1:CES_CBL","CE4:CES_CBI_3","CE6:CES_CBI_5", "DT3:RTDT_PER", "PPT13:PROC_PT13", "DT12:USI-DIG-LP-CET3"],
-            "DSI-QuantaGeo-Rt Scanner (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL", "AC4: ACOU_ADD1", "AC3: ACOU_3", "AU2: AUX_PCAL",
-                                                      "AU2: AUX_PCAL", "IM4: IMAG_ADD1","PI1: PROC_IMAG1", "DT4:SONIC-WELL-P/S-DIG", "PI2: PROC_IMAG2", "PI7: PROC_IMAG7",
-                                                      "PI8: PROC_IMAG8", "PI9: PROC_IMAG9", "PI12: PROC_IMAG12", "PI13: PROC_IMAG13", "RE4: RES_ANIS"],
-            "XL Rock (150DegC Max)": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2"],
-            "XL Rock (150DegC Max) With Core Detection": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2", "SC4: SC_ADD4"]
-        },
-        "HT WELLS": {}
-    }
-
     # --- Loop for each hole section ---
     for tab, hole_size in zip(tabs, hole_sizes):
         with tab:
             st.header(f'{hole_size}" Hole Section')
 
-            # Reference Well selector (main area)
-            st.subheader("Reference Well (auto-fill)")
-            ref_option = st.selectbox("Reference Well", options=["None", reference_well_data["name"]], key=f"ref_{hole_size}")
-
-            # If reference well selected, pre-populate session_state defaults for sidebar inputs
-            if ref_option != "None":
-                # Map hole name in reference data - try exact match with quotes
-                ref_hole_key = f'{hole_size}" Hole'
-                # attempt to match either exact f'{hole_size}" Hole' or f'{hole_size}in Section' or fallback to first matching key by numeric
-                # We'll search keys by starting digits
-                matched_ref_hole = None
-                for k in reference_well_data["Hole Sections"].keys():
-                    if k.startswith(hole_size) or k.startswith(hole_size.replace('.00','')):
-                        matched_ref_hole = k
-                        break
-                if matched_ref_hole is None:
-                    # fallback: if only two holes in reference data and this is first/second section, map by index
-                    ref_keys = list(reference_well_data["Hole Sections"].keys())
-                    try:
-                        idx = hole_sizes.index(hole_size)
-                        matched_ref_hole = ref_keys[idx] if idx < len(ref_keys) else ref_keys[0]
-                    except Exception:
-                        matched_ref_hole = list(reference_well_data["Hole Sections"].keys())[0]
-
-                # put defaults into session_state so the sidebar number_inputs will show them
-                st.session_state.setdefault(f"pkg_{hole_size}", reference_well_data["Package"])
-                st.session_state.setdefault(f"svc_{hole_size}", reference_well_data["Service Name"])
-                st.session_state.setdefault(f"qty_{hole_size}", reference_well_data["Quantity of Tools"])
-                st.session_state.setdefault(f"months_{hole_size}", reference_well_data["Total Months"])
-                st.session_state.setdefault(f"depth_{hole_size}", reference_well_data["Hole Sections"][matched_ref_hole]["Depth"])
-                # days, survey, hours and discount keep existing defaults unless set
-                st.session_state.setdefault(f"days_{hole_size}", 0)
-                st.session_state.setdefault(f"survey_{hole_size}", 0)
-                st.session_state.setdefault(f"hours_{hole_size}", 0)
-                st.session_state.setdefault(f"disc_{hole_size}", 0.0)
-
-            # Sidebar inputs per section - use session_state defaults if set
+            # Sidebar inputs per section
             st.sidebar.subheader(f"Inputs for {hole_size}\" Section")
-            quantity_tools = st.sidebar.number_input(
-                f"Quantity of Tools ({hole_size})",
-                min_value=1,
-                value=int(st.session_state.get(f"qty_{hole_size}", 2)),
-                key=f"qty_{hole_size}"
-            )
-            total_days = st.sidebar.number_input(
-                f"Total Days ({hole_size})",
-                min_value=0,
-                value=int(st.session_state.get(f"days_{hole_size}", 0)),
-                key=f"days_{hole_size}"
-            )
-            total_months = st.sidebar.number_input(
-                f"Total Months ({hole_size})",
-                min_value=0,
-                value=int(st.session_state.get(f"months_{hole_size}", 1)),
-                key=f"months_{hole_size}"
-            )
-            total_depth = st.sidebar.number_input(
-                f"Total Depth (ft) ({hole_size})",
-                min_value=0,
-                value=int(st.session_state.get(f"depth_{hole_size}", 5500)),
-                key=f"depth_{hole_size}"
-            )
-            total_survey = st.sidebar.number_input(
-                f"Total Survey (ft) ({hole_size})",
-                min_value=0,
-                value=int(st.session_state.get(f"survey_{hole_size}", 0)),
-                key=f"survey_{hole_size}"
-            )
-            total_hours = st.sidebar.number_input(
-                f"Total Hours ({hole_size})",
-                min_value=0,
-                value=int(st.session_state.get(f"hours_{hole_size}", 0)),
-                key=f"hours_{hole_size}"
-            )
-            discount = st.sidebar.number_input(
-                f"Discount (%) ({hole_size})",
-                min_value=0.0,
-                max_value=100.0,
-                value=float(st.session_state.get(f"disc_{hole_size}", 0.0)),
-                key=f"disc_{hole_size}"
-            ) / 100.0
+            quantity_tools = st.sidebar.number_input(f"Quantity of Tools ({hole_size})", min_value=1, value=2, key=f"qty_{hole_size}")
+            total_days = st.sidebar.number_input(f"Total Days ({hole_size})", min_value=0, value=0, key=f"days_{hole_size}")
+            total_months = st.sidebar.number_input(f"Total Months ({hole_size})", min_value=0, value=1, key=f"months_{hole_size}")
+            total_depth = st.sidebar.number_input(f"Total Depth (ft) ({hole_size})", min_value=0, value=5500, key=f"depth_{hole_size}")
+            total_survey = st.sidebar.number_input(f"Total Survey (ft) ({hole_size})", min_value=0, value=0, key=f"survey_{hole_size}")
+            total_hours = st.sidebar.number_input(f"Total Hours ({hole_size})", min_value=0, value=0, key=f"hours_{hole_size}")
+            discount = st.sidebar.number_input(f"Discount (%) ({hole_size})", min_value=0.0, max_value=100.0, value=0.0, key=f"disc_{hole_size}") / 100.0
 
             # --- Package & Service ---
             st.subheader("Select Package")
-            # Show packages from the entire workbook
             package_options = df["Package"].dropna().unique().tolist()
-            # If reference selected, default package is set in session_state above otherwise user chooses
-            selected_package = st.selectbox(
-                "Choose Package",
-                package_options,
-                index=package_options.index(st.session_state.get(f"pkg_{hole_size}")) if st.session_state.get(f"pkg_{hole_size}") in package_options else 0,
-                key=f"pkg_{hole_size}"
-            )
+            selected_package = st.selectbox("Choose Package", package_options, key=f"pkg_{hole_size}")
             package_df = df[df["Package"] == selected_package]
 
             st.subheader("Select Service Name")
-            # Build service options from package (non-empty ones)
             service_options = package_df["Service Name"].dropna().unique().tolist()
-            # If reference selected, we inserted default into session_state above; try to set that as index
-            default_service = st.session_state.get(f"svc_{hole_size}", None)
-            if default_service in service_options:
-                default_idx = service_options.index(default_service)
-            else:
-                default_idx = 0 if len(service_options) > 0 else 0
-            selected_service = st.selectbox("Choose Service Name", service_options, index=default_idx, key=f"svc_{hole_size}")
-
-            # Filter: include selected service + blank cells for Specification 1
-            df_service = package_df[
-                (package_df["Service Name"] == selected_service) |
-                (package_df["Service Name"].isna()) |
-                (package_df["Service Name"] == "")
-            ]
+            selected_service = st.selectbox("Choose Service Name", service_options, key=f"svc_{hole_size}")
+            df_service = package_df[package_df["Service Name"] == selected_service]
 
             # --- Tool selection with special cases ---
             code_list = df_service["Specification 1"].dropna().unique().tolist()
+            special_cases_map = {
+                "STANDARD WELLS": {
+                    "PEX-AIT (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","NE1: NEUT_THER","DE1: DENS_FULL","RE1: RES_INDU"],
+                    "PEX-AIT-DSI (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","NE1: NEUT_THER","DE1: DENS_FULL","RE1: RES_INDU",
+                                                 "AU3:AUX_INCL", "AU2: AUX_PCAL", "AU2: AUX_PCAL", "AC3: ACOU_3", "PP7: PROC_PETR7", "PA7: PROC_ACOU6",
+                                                 "PA11: PROC_ACOU13", "PA12: PROC_ACOU14"],
+                    "DOBMI (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL","AC3: ACOU_3",
+                                            "AU2: AUX_PCAL","AU2: AUX_PCAL","PP7: PROC_PETR7","PA7: PROC_ACOU6",
+                                            "PA11: PROC_ACOU13","PA12: PROC_ACOU14","IM3: IMAG_SOBM","PI1: PROC_IMAG1",
+                                            "PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8","PI9: PROC_IMAG9",
+                                            "PI12: PROC_IMAG12","PI13: PROC_IMAG13"],
+                    "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)": ["AU14: AUX_SURELOC","FP25: FPS_SCAR","FP25: FPS_SCAR",
+                                                                      "FP18: FPS_SAMP","FP19: FPS_SPHA","FP23: FPS_TRA",
+                                                                      "FP24: FPS_TRK","FP28: FPS_FCHA_1","FP33: FPS_FCHA_6",
+                                                                      "FP34: FPS_FCHA_7","FP14: FPS_PUMP","FP14: FPS_PUMP",
+                                                                      "FP42: FPS_PROB_LD","FP11: FPS_PROB_FO","FP26: FPS_FCON",
+                                                                      "DT3: RTDT_PER","PPT12: PROC_PT12","FP7: FPS_SPPT_2"],
+                    "IBC (PowerFlex)-CBL (150DegC Max)": ["CE1:CES_CBL","CE4:CES_CBI_3","CE6:CES_CBI_5", "DT3:RTDT_PER", "PPT13:PROC_PT13", "DT12:USI-DIG-LP-CET3"],
+                    "DSI-QuantaGeo-Rt Scanner (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL", "AC4: ACOU_ADD1", "AC3: ACOU_3", "AU2:AUX_PCAL",
+                                                              "AU2:AUX_PCAL", "IM4:IMAG_ADD1","PI1:PROC_IMAG1", "DT4:SONIC-WELL-P/S-DIG", "PI2: PROC_IMAG2", "PI7: PROC_IMAG7",
+                                                              "PI8:PROC_IMAG8", "PI9:PROC_IMAG9", "PI12: PROC_IMAG12", "PI13: PROC_IMAG13", "RE4: RES_ANIS"],
+                    "XL Rock (150DegC Max)": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2"],
+                    "XL Rock (150DegC Max) With Core Detection": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2", "SC4: SC_ADD4"]
+                },
+                "HT WELLS": {}
+            }
+
             special_cases = special_cases_map.get(selected_service, {})
             code_list_with_special = list(special_cases.keys()) + code_list
+            selected_codes = st.multiselect("Select Tools (by Specification 1)", code_list_with_special, key=f"tools_{hole_size}")
 
-            # If reference selected, build selected_codes from reference line-items (by matching the code strings)
-            if ref_option != "None":
-                # find matching reference hole key again
-                matched_ref_hole = None
-                for k in reference_well_data["Hole Sections"].keys():
-                    if k.startswith(hole_size) or k.startswith(hole_size.replace('.00','')):
-                        matched_ref_hole = k
-                        break
-                if matched_ref_hole is None:
-                    ref_keys = list(reference_well_data["Hole Sections"].keys())
-                    idx = hole_sizes.index(hole_size)
-                    matched_ref_hole = ref_keys[idx] if idx < len(ref_keys) else ref_keys[0]
-
-                # reference codes are the EXACT "Code: Description" strings the sheet uses in Specification 1
-                reference_codes = reference_well_data["Hole Sections"][matched_ref_hole]["Tools_LineItems"] + reference_well_data["Additional Services_LineItems"]
-                # For the UI multiselect: show the human-friendly names (special case keys) + all codes; we'll default-select by codes
-                # Build default selection: if any of the codes appear in df_service["Specification 1"], preselect them
-                default_selected = [c for c in code_list_with_special if c in reference_codes]
-                # But many reference_codes are explicit codes (e.g. "AU14: AUX_SURELOC") which are in code_list — so better set default to intersection with code_list
-                default_selected_codes = [c for c in code_list if c in reference_codes]
-                selected_codes = st.multiselect(
-                    "Select Tools (by Specification 1)",
-                    code_list_with_special,
-                    default=default_selected + default_selected_codes,
-                    key=f"tools_{hole_size}"
-                )
-            else:
-                selected_codes = st.multiselect("Select Tools (by Specification 1)", code_list_with_special, key=f"tools_{hole_size}")
-
-            # --- Expand selected special cases (normal flow) ---
+            # --- Expand selected special cases ---
             expanded_codes = []
             used_special_cases = []
-            # If reference selected and selected_codes looks like explicit codes (AU14...), we will prefer those rather than expanding special cases
-            if ref_option != "None":
-                # If user selected any special-case names among selected_codes, expand them normally
-                for code in selected_codes:
-                    if code in special_cases:
-                        expanded_codes.extend(special_cases[code])
-                        used_special_cases.append(code)
-                    else:
-                        expanded_codes.append(code)
-                # Additionally ensure all reference explicit codes are included
-                for ref_code in reference_well_data["Hole Sections"][matched_ref_hole]["Tools_LineItems"]:
-                    if ref_code not in expanded_codes:
-                        expanded_codes.append(ref_code)
-                # Add additional services codes
-                for ref_code in reference_well_data["Additional Services_LineItems"]:
-                    if ref_code not in expanded_codes:
-                        expanded_codes.append(ref_code)
-            else:
-                # normal flow
-                for code in selected_codes:
-                    if code in special_cases:
-                        expanded_codes.extend(special_cases[code])
-                        used_special_cases.append(code)
-                    else:
-                        expanded_codes.append(code)
+            for code in selected_codes:
+                if code in special_cases:
+                    expanded_codes.extend(special_cases[code])
+                    used_special_cases.append(code)
+                else:
+                    expanded_codes.append(code)
 
-            # df_tools: rows from df_service whose Specification 1 is in expanded_codes
-            if expanded_codes:
-                df_tools = df_service[df_service["Specification 1"].isin(expanded_codes)].copy()
-            else:
-                df_tools = pd.DataFrame(columns=df_service.columns)  # empty
+            df_tools = df_service[df_service["Specification 1"].isin(expanded_codes)].copy()
 
             # --- Row-by-row display with dividers ---
             if not df_tools.empty:
                 display_rows = []
-                # If reference selected and used_special_cases is empty, we still want to present reference grouping headers
-                if ref_option != "None" and not used_special_cases:
-                    # create a divider for the Reference Well group
+                inserted_dividers = set()
+                for sc in used_special_cases:
+                    # Divider row
                     divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
-                    divider["Specification 1"] = f"--- {reference_well_data['name']} ({hole_size}) ---"
+                    divider["Specification 1"] = f"--- {sc} ---"
                     display_rows.append(divider)
-                    # then append rows in the order of expanded_codes (so reference order is preserved)
-                    for item in expanded_codes:
+                    # All items for this special case
+                    for item in special_cases[sc]:
                         item_rows = df_tools[df_tools["Specification 1"] == item]
                         display_rows.extend([row.to_frame().T for _, row in item_rows.iterrows()])
-                else:
-                    for sc in used_special_cases:
-                        # Divider row
-                        divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
-                        divider["Specification 1"] = f"--- {sc} ---"
-                        display_rows.append(divider)
-                        # All items for this special case
-                        for item in special_cases[sc]:
-                            item_rows = df_tools[df_tools["Specification 1"] == item]
-                            display_rows.extend([row.to_frame().T for _, row in item_rows.iterrows()])
 
-                    # Non-special tools
-                    for item in df_tools["Specification 1"]:
-                        if item not in sum(special_cases.values(), []):
-                            item_rows = df_tools[df_tools["Specification 1"] == item]
-                            display_rows.extend([row.to_frame().T for _, row in item_rows.iterrows()])
+                # Non-special tools
+                for item in df_tools["Specification 1"]:
+                    if item not in sum(special_cases.values(), []):
+                        item_rows = df_tools[df_tools["Specification 1"] == item]
+                        display_rows.extend([row.to_frame().T for _, row in item_rows.iterrows()])
 
-                if display_rows:
-                    display_df = pd.concat(display_rows, ignore_index=True)
+                display_df = pd.concat(display_rows, ignore_index=True)
 
-                    def highlight_divider(row):
-                        if str(row["Specification 1"]).startswith("---"):
-                            return ["background-color: red; color: white"] * len(row)
-                        return [""] * len(row)
+                def highlight_divider(row):
+                    if str(row["Specification 1"]).startswith("---"):
+                        return ["background-color: red; color: white"] * len(row)
+                    return [""] * len(row)
 
-                    st.subheader(f"Selected Data - Package {selected_package}, Service {selected_service}")
-                    st.dataframe(display_df.style.apply(highlight_divider, axis=1))
-            else:
-                display_df = pd.DataFrame()  # empty for downstream
+                st.subheader(f"Selected Data - Package {selected_package}, Service {selected_service}")
+                st.dataframe(display_df.style.apply(highlight_divider, axis=1))
 
             # --- Calculation ---
             if not df_tools.empty:
                 calc_df = pd.DataFrame()
-                calc_df["Source"] = df_tools.get("Source", "")
-                calc_df["Ref Item"] = df_tools.get("Reference", "")
+                calc_df["Source"] = df_tools["Source"]
+                calc_df["Ref Item"] = df_tools["Reference"]
                 calc_df["Code"] = df_tools["Specification 1"].astype(str).str.strip()
-                calc_df["Items"] = df_tools.get("Specification 2", "")
-                calc_df["Daily Rate"] = pd.to_numeric(df_tools.get("Daily Rate", 0), errors="coerce").fillna(0)
-                calc_df["Monthly Rate"] = pd.to_numeric(df_tools.get("Monthly Rate", 0), errors="coerce").fillna(0)
-                calc_df["Depth Charge (per ft)"] = pd.to_numeric(df_tools.get("Depth Charge (per ft)", 0), errors="coerce").fillna(0)
-                # try Flat Charge, fallback to Flat Rate if named differently
-                flat_charge_col = "Flat Charge" if "Flat Charge" in df_tools.columns else "Flat Rate"
-                calc_df["Flat Rate"] = pd.to_numeric(df_tools.get(flat_charge_col, 0), errors="coerce").fillna(0)
+                calc_df["Items"] = df_tools["Specification 2"]
+                calc_df["Daily Rate"] = pd.to_numeric(df_tools["Daily Rate"], errors="coerce").fillna(0)
+                calc_df["Monthly Rate"] = pd.to_numeric(df_tools["Monthly Rate"], errors="coerce").fillna(0)
+                calc_df["Depth Charge (per ft)"] = pd.to_numeric(df_tools["Depth Charge (per ft)"], errors="coerce").fillna(0)
+                calc_df["Flat Rate"] = pd.to_numeric(df_tools["Flat Charge"], errors="coerce").fillna(0)
                 calc_df["Survey Charge (per ft)"] = 0
                 calc_df["Hourly Charge"] = 0
                 calc_df["User Flat Charge"] = calc_df["Flat Rate"].apply(lambda x: 1 if x > 0 else 0)
                 calc_df = st.data_editor(calc_df, num_rows="dynamic", key=f"editor_{hole_size}")
-
-                # Use the current sidebar values (which were pre-filled from session_state if reference selected)
                 calc_df["Quantity of Tools"] = quantity_tools
                 calc_df["Total Days"] = total_days
                 calc_df["Total Months"] = total_months
@@ -424,11 +207,7 @@ if uploaded_file:
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
 
                 # Store for Excel download
-                # store the actual df_tools slice and the used_special_cases mapping
                 all_calc_dfs_for_excel.append((hole_size, used_special_cases, df_tools, special_cases))
-            else:
-                # append empty to keep consistent shape if needed (skip storing)
-                pass
 
     # --- Grand Total ---
     if section_totals:
@@ -539,8 +318,8 @@ if st.button("Download Cost Estimate Excel"):
                         rental_charge = qty * ((item_row.get("Daily Rate",0)*total_days) + (item_row.get("Monthly Rate",0)*total_months))*(1-discount_pct)
                         operating_charge = ((item_row.get("Depth Charge (per ft)",0)*total_depth)+
                                             (item_row.get("Survey Charge (per ft)",0)*total_survey)+
-                                            (item_row.get("Flat Rate",0))+(
-                                            item_row.get("Hourly Charge",0)*total_hours))*(1-discount_pct)
+                                            (item_row.get("Flat Rate",0))+
+                                            (item_row.get("Hourly Charge",0)*total_hours))*(1-discount_pct)
                         total_myr = rental_charge + operating_charge
 
                         ws[f"S{current_row}"] = total_myr
@@ -551,7 +330,6 @@ if st.button("Download Cost Estimate Excel"):
 
             # Insert non-special tools
             for item in df_tools_section["Specification 1"]:
-                # avoid duplicates already handled above
                 if item not in sum(special_cases_section.values(), []):
                     item_rows = df_tools_section[df_tools_section["Specification 1"] == item]
                     if not item_rows.empty:
@@ -586,8 +364,8 @@ if st.button("Download Cost Estimate Excel"):
                         rental_charge = qty * ((item_row.get("Daily Rate",0)*total_days) + (item_row.get("Monthly Rate",0)*total_months))*(1-discount_pct)
                         operating_charge = ((item_row.get("Depth Charge (per ft)",0)*total_depth)+
                                             (item_row.get("Survey Charge (per ft)",0)*total_survey)+
-                                            (item_row.get("Flat Rate",0))+(
-                                            item_row.get("Hourly Charge",0)*total_hours))*(1-discount_pct)
+                                            (item_row.get("Flat Rate",0))+
+                                            (item_row.get("Hourly Charge",0)*total_hours))*(1-discount_pct)
                         total_myr = rental_charge + operating_charge
 
                         ws[f"S{current_row}"] = total_myr
@@ -607,3 +385,13 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+
+
+
+
+
+
+
+
+
