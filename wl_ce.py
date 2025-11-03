@@ -44,25 +44,23 @@ if uploaded_file:
 
     # Prefill parameters if Well A is selected
     if well_option == "Well A":
-        # Example: Well A defaults (customize as needed)
-        well_a_defaults = {
-            "qty": 3,
-            "days": 5,
-            "months": 1,
-            "depth": 6000,
-            "survey": 100,
-            "hours": 8,
-            "disc": 10.0 / 100  # 10%
+        # Well A defaults per hole section
+        well_a_defaults_per_section = {
+            '12.25': {"Package": "Package A", "Service": "Standard Well", "qty": 2, "months": 1, "depth": 5500},
+            '8.5': {"Package": "Package A", "Service": "Standard Well", "qty": 2, "months": 1, "depth": 8000}
         }
+        
         for hole_size in hole_sizes:
-            st.session_state[f"qty_{hole_size}"] = well_a_defaults["qty"]
-            st.session_state[f"days_{hole_size}"] = well_a_defaults["days"]
-            st.session_state[f"months_{hole_size}"] = well_a_defaults["months"]
-            st.session_state[f"depth_{hole_size}"] = well_a_defaults["depth"]
-            st.session_state[f"survey_{hole_size}"] = well_a_defaults["survey"]
-            st.session_state[f"hours_{hole_size}"] = well_a_defaults["hours"]
-            st.session_state[f"disc_{hole_size}"] = well_a_defaults["disc"]
-
+            key_size = str(float(hole_size))
+            defaults = well_a_defaults_per_section.get(key_size, {})
+            if defaults:
+                st.session_state[f"qty_{hole_size}"] = defaults["qty"]
+                st.session_state[f"months_{hole_size}"] = defaults["months"]
+                st.session_state[f"depth_{hole_size}"] = defaults["depth"]
+                # Also prefill Package and Service
+                st.session_state[f"pkg_{hole_size}"] = defaults["Package"]
+                st.session_state[f"svc_{hole_size}"] = defaults["Service"]
+                
     # Create dynamic tabs
     tabs = st.tabs([f'{hs}" Hole Section' for hs in hole_sizes])
     section_totals = {}
@@ -406,3 +404,4 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
