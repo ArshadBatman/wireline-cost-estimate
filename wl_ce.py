@@ -8,45 +8,6 @@ st.title("SMARTLog: Wireline Cost Estimator")
 
 uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx"])
 
-# --- Reference Wells ---
-reference_wells = {
-    "Well A": {
-        "Package": "Package A",
-        "Hole Sections": {
-            '12.25"': {"Quantity": 2, "Total Months": 1, "Depth": 5500},
-            '8.5"': {"Quantity": 2, "Total Months": 1, "Depth": 8000}
-        },
-        "Special Tools": {
-            '12.25"': {
-                "Well A PEX-AIT (150DegC Maximum)": ["AU14: AUX_SURELOC","NE1: NEUT_THER","DE1: DENS_FULL","RE1: RES_INDU"],
-                "Well A DSI-Dual OBMI (150DegC Maximum)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL","AC3: ACOU_3",
-                                                           "AU2: AUX_PCAL","AU2: AUX_PCAL","PP7: PROC_PETR7","PA7: PROC_ACOU6",
-                                                           "PA11: PROC_ACOU13","PA12: PROC_ACOU14","IM3: IMAG_SOBM","PI1: PROC_IMAG1",
-                                                           "PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8","PI9: PROC_IMAG9",
-                                                           "PI12: PROC_IMAG12","PI13: PROC_IMAG13"]
-            },
-            '8.5"': {
-                "Well A PEX-AIT (150DegC Maximum)": ["AU14: AUX_SURELOC","NE1: NEUT_THER","DE1: DENS_FULL","RE1: RES_INDU"],
-                "Well A DSI-Dual OBMI (150DegC Maximum)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL","AC3: ACOU_3",
-                                                           "AU2: AUX_PCAL","AU2: AUX_PCAL","PP7: PROC_PETR7","PA7: PROC_ACOU6",
-                                                           "PA11: PROC_ACOU13","PA12: PROC_ACOU14","IM3: IMAG_SOBM","PI1: PROC_IMAG1",
-                                                           "PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8","PI9: PROC_IMAG9",
-                                                           "PI12: PROC_IMAG12","PI13: PROC_IMAG13"]
-            }
-        }
-    }
-}
-
-# --- Reference Well Selector ---
-st.sidebar.header("Reference Well Selection")
-selected_well = st.sidebar.selectbox("Reference Well", ["None"] + list(reference_wells.keys()))
-
-
-if selected_well != "None":
-    well_info = reference_wells[selected_well]
-    hole_sizes_defaults = list(well_info["Hole Sections"].keys())
-    hole_data_defaults = well_info["Hole Sections"]
-    special_tools_defaults = well_info["Special Tools"]
 if uploaded_file:
     # --- Reset unique tracker when a new file is uploaded ---
     if "last_uploaded_name" not in st.session_state or st.session_state["last_uploaded_name"] != uploaded_file.name:
@@ -57,6 +18,10 @@ if uploaded_file:
     if st.sidebar.button("Reset unique-tool usage (AU14, etc.)", key="reset_unique"):
         st.session_state["unique_tracker"] = set()
         st.sidebar.success("Unique-tool tracker cleared.")
+
+    # --- Well A Integration ---
+    st.sidebar.header("Well Selection")
+    well_option = st.sidebar.selectbox("Select Well", ["None", "Well A"], key="well_select")
 
     # Read data
     df = pd.read_excel(uploaded_file, sheet_name="Data")
@@ -69,18 +34,34 @@ if uploaded_file:
     # Unique tools across sections
     unique_tools = {"AU14: AUX_SURELOC"}
 
-    # --- Dynamic Hole Section Setup with Reference Well Defaults ---
+    # --- Dynamic Hole Section Setup ---
     st.sidebar.header("Hole Sections Setup")
-    if selected_well != "None":
-        num_sections = len(hole_sizes_defaults)
-    else:
-        num_sections = st.sidebar.number_input("Number of Hole Sections", min_value=1, max_value=5, value=2, step=1)
-    
+    num_sections = st.sidebar.number_input("Number of Hole Sections", min_value=1, max_value=5, value=2, step=1)
     hole_sizes = []
     for i in range(num_sections):
-        default_hole_size = hole_sizes_defaults[i] if selected_well != "None" and i < len(hole_sizes_defaults) else f"{12.25 - i*3.75:.2f}"
-        hole_size = st.sidebar.text_input(f"Hole Section {i+1} Size (inches)", value=default_hole_size)
+        hole_size = st.sidebar.text_input(f"Hole Section {i+1} Size (inches)", value=f"{12.25 - i*3.75:.2f}")
         hole_sizes.append(hole_size)
+
+    # Prefill parameters if Well A is selected
+    if well_option == "Well A":
+        # Example: Well A defaults (customize as needed)
+        well_a_defaults = {
+            "qty": 3,
+            "days": 5,
+            "months": 1,
+            "depth": 6000,
+            "survey": 100,
+            "hours": 8,
+            "disc": 10.0 / 100  # 10%
+        }
+        for hole_size in hole_sizes:
+            st.session_state[f"qty_{hole_size}"] = well_a_defaults["qty"]
+            st.session_state[f"days_{hole_size}"] = well_a_defaults["days"]
+            st.session_state[f"months_{hole_size}"] = well_a_defaults["months"]
+            st.session_state[f"depth_{hole_size}"] = well_a_defaults["depth"]
+            st.session_state[f"survey_{hole_size}"] = well_a_defaults["survey"]
+            st.session_state[f"hours_{hole_size}"] = well_a_defaults["hours"]
+            st.session_state[f"disc_{hole_size}"] = well_a_defaults["disc"]
 
     # Create dynamic tabs
     tabs = st.tabs([f'{hs}" Hole Section' for hs in hole_sizes])
@@ -94,13 +75,13 @@ if uploaded_file:
 
             # Sidebar inputs per section
             st.sidebar.subheader(f"Inputs for {hole_size}\" Section")
-            quantity_tools = st.sidebar.number_input(f"Quantity of Tools ({hole_size})", min_value=1, value=2, key=f"qty_{hole_size}")
-            total_days = st.sidebar.number_input(f"Total Days ({hole_size})", min_value=0, value=0, key=f"days_{hole_size}")
-            total_months = st.sidebar.number_input(f"Total Months ({hole_size})", min_value=0, value=1, key=f"months_{hole_size}")
-            total_depth = st.sidebar.number_input(f"Total Depth (ft) ({hole_size})", min_value=0, value=5500, key=f"depth_{hole_size}")
-            total_survey = st.sidebar.number_input(f"Total Survey (ft) ({hole_size})", min_value=0, value=0, key=f"survey_{hole_size}")
-            total_hours = st.sidebar.number_input(f"Total Hours ({hole_size})", min_value=0, value=0, key=f"hours_{hole_size}")
-            discount = st.sidebar.number_input(f"Discount (%) ({hole_size})", min_value=0.0, max_value=100.0, value=0.0, key=f"disc_{hole_size}") / 100.0
+            quantity_tools = st.sidebar.number_input(f"Quantity of Tools ({hole_size})", min_value=1, value=st.session_state.get(f"qty_{hole_size}",2), key=f"qty_{hole_size}")
+            total_days = st.sidebar.number_input(f"Total Days ({hole_size})", min_value=0, value=st.session_state.get(f"days_{hole_size}",0), key=f"days_{hole_size}")
+            total_months = st.sidebar.number_input(f"Total Months ({hole_size})", min_value=0, value=st.session_state.get(f"months_{hole_size}",1), key=f"months_{hole_size}")
+            total_depth = st.sidebar.number_input(f"Total Depth (ft) ({hole_size})", min_value=0, value=st.session_state.get(f"depth_{hole_size}",5500), key=f"depth_{hole_size}")
+            total_survey = st.sidebar.number_input(f"Total Survey (ft) ({hole_size})", min_value=0, value=st.session_state.get(f"survey_{hole_size}",0), key=f"survey_{hole_size}")
+            total_hours = st.sidebar.number_input(f"Total Hours ({hole_size})", min_value=0, value=st.session_state.get(f"hours_{hole_size}",0), key=f"hours_{hole_size}")
+            discount = st.sidebar.number_input(f"Discount (%) ({hole_size})", min_value=0.0, max_value=100.0, value=st.session_state.get(f"disc_{hole_size}",0.0)*100, key=f"disc_{hole_size}") / 100.0
 
             # --- Package & Service ---
             st.subheader("Select Package")
@@ -163,16 +144,13 @@ if uploaded_file:
                 display_rows = []
                 inserted_dividers = set()
                 for sc in used_special_cases:
-                    # Divider row
                     divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
                     divider["Specification 1"] = f"--- {sc} ---"
                     display_rows.append(divider)
-                    # All items for this special case
                     for item in special_cases[sc]:
                         item_rows = df_tools[df_tools["Specification 1"] == item]
                         display_rows.extend([row.to_frame().T for _, row in item_rows.iterrows()])
 
-                # Non-special tools
                 for item in df_tools["Specification 1"]:
                     if item not in sum(special_cases.values(), []):
                         item_rows = df_tools[df_tools["Specification 1"] == item]
@@ -266,8 +244,7 @@ if st.button("Download Cost Estimate Excel"):
             sheet_name = f'{hole_size}" Hole'
             wb = writer.book
             ws = wb.create_sheet(title=sheet_name)
-
-            # --- Header rows ---
+# --- Header rows ---
             ws.merge_cells("B2:B4"); ws["B2"]="Reference"
             ws.merge_cells("C2:C4"); ws["C2"]="Specification 1"
             ws.merge_cells("D2:D4"); ws["D2"]="Specification 2"
@@ -429,15 +406,3 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
-
-
-
-
-
-
-
-
-
-
-
