@@ -8,6 +8,61 @@ st.title("SMARTLog: Wireline Cost Estimator")
 
 uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx"])
 
+# --- Reference Wells ---
+reference_wells = {
+    "Well A": {
+        "Package": "Package A",
+        "Hole Sections": {
+            '12.25"': {"Quantity": 2, "Total Months": 1, "Depth": 5500},
+            '8.5"': {"Quantity": 2, "Total Months": 1, "Depth": 8000}
+        },
+        "Special Tools": {
+            '12.25"': {
+                "Well A PEX-AIT (150DegC Maximum)": ["AU14: AUX_SURELOC","NE1: NEUT_THER","DE1: DENS_FULL","RE1: RES_INDU"],
+                "Well A DSI-Dual OBMI (150DegC Maximum)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL","AC3: ACOU_3",
+                                                           "AU2: AUX_PCAL","AU2: AUX_PCAL","PP7: PROC_PETR7","PA7: PROC_ACOU6",
+                                                           "PA11: PROC_ACOU13","PA12: PROC_ACOU14","IM3: IMAG_SOBM","PI1: PROC_IMAG1",
+                                                           "PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8","PI9: PROC_IMAG9",
+                                                           "PI12: PROC_IMAG12","PI13: PROC_IMAG13"],
+                "Well A MDT Pretest and Sampling (MDT-LFA-QS-XLD-MIFA-2MS)": ["AU14: AUX_SURELOC","FP25: FPS_SCAR","FP25: FPS_SCAR","FP18: FPS_SAMP",
+                                                                            "FP19: FPS_SPHA","FP23: FPS_TRA","FP24: FPS_TRK","FP28: FPS_FCHA_1",
+                                                                            "FP33: FPS_FCHA_6","FP34: FPS_FCHA_7","FP14: FPS_PUMP","FP14: FPS_PUMP",
+                                                                            "FP42: FPS_PROB_XLD","FP11: FPS_PROB_FO","FP26: FPS_FCON","DT3:RTDT_PER",
+                                                                            "PPT12: PROC_PT12"],
+                "Well A XL Rock (150 DegC Maximum)": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2"],
+                "Pipe Conveyed Logging": ["CO1: CONV_PCL"],
+                "FPIT & Back-off services": ["AU7: AUX_SBOX","PC5: PC_10KH2S","PR1: PR_FP","PR2: PR_BO","PR3: PR_TP","AU11: AUX_GRCCL",
+                                             "PR7: PR_CST","MS1: MS_PL","MS3: MS_JB"],
+                "Unit, Cables & Conveyance": ["LU1: LUDR_ZON2","CA9: CABL_HSOH_1","CA3: CABL_HSOH","CA8: CABL_STCH_2","DT2:RTDT_SAT"],
+                "Personnel": ["PER1:PWFE","PER2:PWSO","PER3:PWOP","PER4:PWSE"]
+            },
+            '8.5"': {  # same as 12.25"
+                "Well A PEX-AIT (150DegC Maximum)": ["AU14: AUX_SURELOC","NE1: NEUT_THER","DE1: DENS_FULL","RE1: RES_INDU"],
+                "Well A DSI-Dual OBMI (150DegC Maximum)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL","AC3: ACOU_3",
+                                                           "AU2: AUX_PCAL","AU2: AUX_PCAL","PP7: PROC_PETR7","PA7: PROC_ACOU6",
+                                                           "PA11: PROC_ACOU13","PA12: PROC_ACOU14","IM3: IMAG_SOBM","PI1: PROC_IMAG1",
+                                                           "PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8","PI9: PROC_IMAG9",
+                                                           "PI12: PROC_IMAG12","PI13: PROC_IMAG13"],
+                "Well A MDT Pretest and Sampling (MDT-LFA-QS-XLD-MIFA-2MS)": ["AU14: AUX_SURELOC","FP25: FPS_SCAR","FP25: FPS_SCAR","FP18: FPS_SAMP",
+                                                                            "FP19: FPS_SPHA","FP23: FPS_TRA","FP24: FPS_TRK","FP28: FPS_FCHA_1",
+                                                                            "FP33: FPS_FCHA_6","FP34: FPS_FCHA_7","FP14: FPS_PUMP","FP14: FPS_PUMP",
+                                                                            "FP42: FPS_PROB_XLD","FP11: FPS_PROB_FO","FP26: FPS_FCON","DT3:RTDT_PER",
+                                                                            "PPT12: PROC_PT12"],
+                "Well A XL Rock (150 DegC Maximum)": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2"],
+                "Pipe Conveyed Logging": ["CO1: CONV_PCL"],
+                "FPIT & Back-off services": ["AU7: AUX_SBOX","PC5: PC_10KH2S","PR1: PR_FP","PR2: PR_BO","PR3: PR_TP","AU11: AUX_GRCCL",
+                                             "PR7: PR_CST","MS1: MS_PL","MS3: MS_JB"],
+                "Unit, Cables & Conveyance": ["LU1: LUDR_ZON2","CA9: CABL_HSOH_1","CA3: CABL_HSOH","CA8: CABL_STCH_2","DT2:RTDT_SAT"],
+                "Personnel": ["PER1:PWFE","PER2:PWSO","PER3:PWOP","PER4:PWSE"]
+            }
+        }
+    }
+}
+
+# --- Reference Well Selector ---
+st.sidebar.header("Reference Well Selection")
+selected_well = st.sidebar.selectbox("Reference Well", ["None"] + list(reference_wells.keys()))
+
 if uploaded_file:
     # --- Reset unique tracker when a new file is uploaded ---
     if "last_uploaded_name" not in st.session_state or st.session_state["last_uploaded_name"] != uploaded_file.name:
@@ -385,6 +440,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
