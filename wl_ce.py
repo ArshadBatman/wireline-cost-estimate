@@ -222,9 +222,14 @@ if uploaded_file:
             selected_package = st.selectbox(
                 "Choose Package",
                 package_options,
-                index=package_options.index(st.session_state.get(f"pkg_{hole_size}"])) if st.session_state.get(f"pkg_{hole_size}") in package_options else 0,
+                index=(
+                    package_options.index(st.session_state.get(f"pkg_{hole_size}"))
+                    if st.session_state.get(f"pkg_{hole_size}") in package_options
+                    else 0
+                ),
                 key=f"pkg_{hole_size}"
             )
+
             package_df = df[df["Package"] == selected_package]
 
             st.subheader("Select Service Name")
@@ -607,4 +612,5 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
