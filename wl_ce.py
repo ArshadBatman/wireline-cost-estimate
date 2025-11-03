@@ -63,6 +63,16 @@ reference_wells = {
 st.sidebar.header("Reference Well Selection")
 selected_well = st.sidebar.selectbox("Reference Well", ["None"] + list(reference_wells.keys()))
 
+# --- Default values if a reference well is selected ---
+hole_sizes_defaults = []
+hole_data_defaults = {}
+special_tools_defaults = {}
+if selected_well != "None":
+    well_info = reference_wells[selected_well]
+    hole_sizes_defaults = list(well_info["Hole Sections"].keys())
+    hole_data_defaults = well_info["Hole Sections"]
+    special_tools_defaults = well_info["Special Tools"]
+    
 if uploaded_file:
     # --- Reset unique tracker when a new file is uploaded ---
     if "last_uploaded_name" not in st.session_state or st.session_state["last_uploaded_name"] != uploaded_file.name:
@@ -440,6 +450,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
