@@ -46,8 +46,8 @@ if uploaded_file:
     if well_option == "Well A":
         # Well A defaults per hole section
         well_a_defaults_per_section = {
-            '12.25': {"Package": "Package A", "Service": "Standard Well", "qty": 2, "months": 1, "depth": 5500},
-            '8.5': {"Package": "Package A", "Service": "Standard Well", "qty": 2, "months": 1, "depth": 8000}
+            '12.25': {"Package": "Package A", "Service Name": "Standard Wells", "qty": 2, "months": 1, "depth": 5500},
+            '8.5': {"Package": "Package A", "Service Name": "Standard Wells", "qty": 2, "months": 1, "depth": 8000}
         }
         
         for hole_size in hole_sizes:
@@ -404,4 +404,5 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
