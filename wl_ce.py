@@ -97,7 +97,7 @@ if uploaded_file:
                                                                       "DT3: RTDT_PER","PPT12: PROC_PT12","FP7: FPS_SPPT_2"],
                     "IBC (PowerFlex)-CBL (150DegC Max)": ["CE1:CES_CBL","CE4:CES_CBI_3","CE6:CES_CBI_5", "DT3:RTDT_PER", "PPT13:PROC_PT13", "DT12:USI-DIG-LP-CET3"],
                     "DSI-QuantaGeo-Rt Scanner (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL", "AC4: ACOU_ADD1", "AC3: ACOU_3", "AU2: AUX_PCAL",
-                                                              "AU2: AUX_PCAL", "IM4:IMAG_ADD1","PI1:PROC_IMAG1", "DT4:SONIC-WELL-P/S-DIG", "PI2: PROC_IMAG2", "PI7: PROC_IMAG7",
+                                                              "AU2: AUX_PCAL", "IM4: IMAG_ADD1","PI1:PROC_IMAG1", "DT4:SONIC-WELL-P/S-DIG", "PI2: PROC_IMAG2", "PI7: PROC_IMAG7",
                                                               "PI8:PROC_IMAG8", "PI9:PROC_IMAG9", "PI12: PROC_IMAG12", "PI13: PROC_IMAG13", "RE4: RES_ANIS"],
                     "XL Rock (150DegC Max)": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2"],
                     "XL Rock (150DegC Max) With Core Detection": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2", "SC4: SC_ADD4"]
@@ -392,6 +392,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
