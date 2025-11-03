@@ -41,62 +41,6 @@ reference_wells = {
 st.sidebar.header("Reference Well Selection")
 selected_well = st.sidebar.selectbox("Reference Well", ["None"] + list(reference_wells.keys()))
 
-# --- Default values if a reference well is selected ---
-hole_sizes_defaults = []
-hole_data_defaults = {}
-special_tools_defaults = {}
-if selected_well != "None":
-    well_info = reference_wells[selected_well]
-    hole_sizes_defaults = list(well_info["Hole Sections"].keys())
-    hole_data_defaults = well_info["Hole Sections"]
-    special_tools_defaults = well_info["Special Tools"]
-
-# --- Dynamic Hole Section Setup ---
-st.sidebar.header("Hole Sections Setup")
-num_sections = st.sidebar.number_input(
-    "Number of Hole Sections", min_value=1, max_value=5, value=len(hole_sizes_defaults) or 2, step=1
-)
-
-hole_sizes = []
-for i in range(num_sections):
-    # If reference well has a hole size, use it; otherwise default
-    default_hole_size = hole_sizes_defaults[i] if i < len(hole_sizes_defaults) else f"{12.25 - i*3.75:.2f}"
-    hole_size = st.sidebar.text_input(f"Hole Section {i+1} Size (inches)", value=default_hole_size)
-    hole_sizes.append(hole_size)
-
-# --- Loop for each hole section ---
-section_totals = {}
-all_calc_dfs_for_excel = []
-
-for hole_size in hole_sizes:
-    st.header(f'{hole_size}" Hole Section')
-
-    # --- Sidebar Inputs with Reference Well Defaults ---
-    default_qty = hole_data_defaults.get(hole_size, {}).get("Quantity", 1)
-    default_months = hole_data_defaults.get(hole_size, {}).get("Total Months", 1)
-    default_depth = hole_data_defaults.get(hole_size, {}).get("Depth", 0)
-
-    quantity_tools = st.sidebar.number_input(f"Quantity of Tools ({hole_size})",
-                                             min_value=1, value=default_qty, key=f"qty_{hole_size}")
-    total_days = st.sidebar.number_input(f"Total Days ({hole_size})",
-                                         min_value=0, value=0, key=f"days_{hole_size}")
-    total_months = st.sidebar.number_input(f"Total Months ({hole_size})",
-                                           min_value=0, value=default_months, key=f"months_{hole_size}")
-    total_depth = st.sidebar.number_input(f"Total Depth (ft) ({hole_size})",
-                                          min_value=0, value=default_depth, key=f"depth_{hole_size}")
-    total_survey = st.sidebar.number_input(f"Total Survey (ft) ({hole_size})", min_value=0, value=0, key=f"survey_{hole_size}")
-    total_hours = st.sidebar.number_input(f"Total Hours ({hole_size})", min_value=0, value=0, key=f"hours_{hole_size}")
-    discount = st.sidebar.number_input(f"Discount (%) ({hole_size})", min_value=0.0, max_value=100.0, value=0.0, key=f"disc_{hole_size}") / 100.0
-
-    # --- Tool selection with Reference Well Defaults ---
-    # Assume df_service and code_list_with_special are already defined earlier
-    default_tools = special_tools_defaults.get(hole_size, {}).keys() if special_tools_defaults else []
-    selected_codes = st.multiselect(
-        "Select Tools (by Specification 1)",
-        code_list_with_special,
-        default=list(default_tools),
-        key=f"tools_{hole_size}"
-    )
 
 if selected_well != "None":
     well_info = reference_wells[selected_well]
@@ -480,6 +424,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
