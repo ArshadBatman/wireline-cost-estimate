@@ -69,12 +69,17 @@ if uploaded_file:
     # Unique tools across sections
     unique_tools = {"AU14: AUX_SURELOC"}
 
-    # --- Dynamic Hole Section Setup ---
+    # --- Dynamic Hole Section Setup with Reference Well Defaults ---
     st.sidebar.header("Hole Sections Setup")
-    num_sections = st.sidebar.number_input("Number of Hole Sections", min_value=1, max_value=5, value=2, step=1)
+    if selected_well != "None":
+        num_sections = len(hole_sizes_defaults)
+    else:
+        num_sections = st.sidebar.number_input("Number of Hole Sections", min_value=1, max_value=5, value=2, step=1)
+    
     hole_sizes = []
     for i in range(num_sections):
-        hole_size = st.sidebar.text_input(f"Hole Section {i+1} Size (inches)", value=f"{12.25 - i*3.75:.2f}")
+        default_hole_size = hole_sizes_defaults[i] if selected_well != "None" and i < len(hole_sizes_defaults) else f"{12.25 - i*3.75:.2f}"
+        hole_size = st.sidebar.text_input(f"Hole Section {i+1} Size (inches)", value=default_hole_size)
         hole_sizes.append(hole_size)
 
     # Create dynamic tabs
@@ -424,6 +429,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
