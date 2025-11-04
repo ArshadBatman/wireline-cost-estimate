@@ -155,47 +155,61 @@ if uploaded_file:
                 key=f"disc_{hole_size}"
             ) / 100.0
 
-            # --- Package & Service ---
+           # --- Package & Service ---
             st.subheader("Select Package")
             package_options = df["Package"].dropna().unique().tolist()
-            # If Well A selected and Package A exists in options, choose it by default; otherwise show normal selectbox
+            
+            # Default package if Well A
             default_pkg = None
             if well_option == "Well A":
-                pkg_candidate = reference_wells["Well A"]["Package"]
+                pkg_candidate = reference_wells["Well A"]["Package"]  # "Package A"
                 if pkg_candidate in package_options:
                     default_pkg = pkg_candidate
+            
+            # Select Package (prefill if applicable)
             if default_pkg:
-                # set selected index to default
                 try:
-                    selected_package = st.selectbox("Choose Package", package_options, index=package_options.index(default_pkg), key=f"pkg_{hole_size}")
+                    selected_package = st.selectbox(
+                        "Choose Package", package_options, index=package_options.index(default_pkg), key=f"pkg_{hole_size}"
+                    )
                 except Exception:
                     selected_package = st.selectbox("Choose Package", package_options, key=f"pkg_{hole_size}")
             else:
                 selected_package = st.selectbox("Choose Package", package_options, key=f"pkg_{hole_size}")
+            
             package_df = df[df["Package"] == selected_package]
-
+            
             st.subheader("Select Service Name")
+            # Include only relevant Service + blank rows
             service_options = package_df["Service Name"].dropna().unique().tolist()
-            # prefer "Standard Wells" when Well A selected
+            service_options = [svc for svc in service_options if svc.strip() != ""]  # remove pure blanks
+            service_options += [""]  # always allow blank option
+            
+            # Default service if Well A
             default_svc = None
             if well_option == "Well A":
-                svc_candidate = reference_wells["Well A"]["Service"]
+                svc_candidate = reference_wells["Well A"]["Service"]  # "Standard Wells"
                 if svc_candidate in service_options:
                     default_svc = svc_candidate
+            
+            # Select Service Name
             if default_svc:
                 try:
-                    selected_service = st.selectbox("Choose Service Name", service_options, index=service_options.index(default_svc), key=f"svc_{hole_size}")
+                    selected_service = st.selectbox(
+                        "Choose Service Name", service_options, index=service_options.index(default_svc), key=f"svc_{hole_size}"
+                    )
                 except Exception:
                     selected_service = st.selectbox("Choose Service Name", service_options, key=f"svc_{hole_size}")
             else:
-                # fallback to normal selectbox (still editable)
-                if len(service_options) == 0:
-                    # empty list; show empty selectbox to avoid error
-                    selected_service = st.selectbox("Choose Service Name", [""], index=0, key=f"svc_{hole_size}")
-                else:
-                    selected_service = st.selectbox("Choose Service Name", service_options, key=f"svc_{hole_size}")
+                selected_service = st.selectbox("Choose Service Name", service_options, key=f"svc_{hole_size}")
+            
+            # Filter DataFrame: include only selected service + blank cells
+            df_service = package_df[
+                (package_df["Service Name"] == selected_service) | 
+                (package_df["Service Name"].isna()) | 
+                (package_df["Service Name"] == "")
+            ]
 
-            df_service = package_df[package_df["Service Name"] == selected_service]
 
             # --- Tool selection with special cases ---
             # Build the special_cases_map exactly as in your original code so the groups match
@@ -529,3 +543,4 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
