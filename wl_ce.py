@@ -183,34 +183,7 @@ if uploaded_file:
             service_options = package_df["Service Name"].dropna().unique().tolist()
             service_options = [svc for svc in service_options if svc.strip() != ""]  # remove empty strings
             
-            # Exclude certain services for 12.25" Hole Section in Well A
-            exclude_services_12_25 = [
-                "Pipe Conveyed Logging",
-                "FPIT & Back-off services / Drilling ontingent Support Services",
-                "Unit, Cables & Conveyance",
-                "Personnel"
-            ]
-            
-            # If Well A is selected, automatically preselect the Well A tool groups
-            default_selected_groups = []
-            if well_option == "Well A":
-                # Get all reference tool groups
-                default_groups = reference_wells["Well A"]["Tool Groups"]
-                # Only include groups that exist in the current code list
-                default_selected_groups = [g for g in default_groups if g in code_list_with_special]
-                
-                # Remove excluded groups for 12.25" Hole Section
-                if hole_size == '12.25"':
-                    exclude_services_12_25 = [
-                        "Pipe Conveyed Logging",
-                        "FPIT & Back-off services / Drilling ontingent Support Services",
-                        "Unit, Cables & Conveyance",
-                        "Personnel"
-                    ]
-                    default_selected_groups = [g for g in default_selected_groups if g not in exclude_services_12_25]
-            
-
-            
+           
             # Always allow blank option
             if "" not in service_options:
                 service_options.append("")
@@ -587,6 +560,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
