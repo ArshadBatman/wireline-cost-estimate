@@ -120,7 +120,7 @@ if uploaded_file:
                                                                                       "PR7: PR_CST","MS1: MS_PL","MS3:MS_JB"],
                     "Unit, Cables & Conveyance": ["LU1: LUDR_ZON2","CA9: CABL_HSOH_1","CA3: CABL_HSOH","CA8: CABL_STCH_2","DT2:RTDT_SAT"],
                     "XL Rock (150DegC Max)": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2"],
-                    "XL Rock (150DegC Max) With Core Detection": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2", "SC4: SC_ADD4"]
+                    "XL Rock (150DegC Max) With Core Detection": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2", "SC4: SC_ADD4"],
                     "Personnel": ["PER1:PWFE","PER2:PWSO","PER3:PWOP", "PER4:PWSE"]
                 },
                 "HT WELLS": {}
@@ -409,6 +409,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
