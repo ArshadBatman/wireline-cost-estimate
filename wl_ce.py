@@ -195,7 +195,8 @@ if uploaded_file:
                 service_options = [svc for svc in service_options if svc not in exclude_services_12_25]
             
             # Always allow blank option
-            service_options += [""]
+            if "" not in service_options:
+                service_options.append("")
             
             # Default service if Well A
             default_svc = None
@@ -560,6 +561,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
