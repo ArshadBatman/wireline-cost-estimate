@@ -191,7 +191,7 @@ if uploaded_file:
                 "Personnel"
             ]
             
-            if well_option == "Well A" and hole_size == "12.25":
+            if well_option == "Well A" and hole_size == '12.25"':
                 service_options = [svc for svc in service_options if svc not in exclude_services_12_25]
             
             # Always allow blank option
@@ -560,6 +560,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
