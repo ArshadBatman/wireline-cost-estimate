@@ -8,6 +8,33 @@ st.title("SMARTLog: Wireline Cost Estimator")
 
 uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx"])
 
+# --- Well A definition (reference well) ---
+reference_wells = {
+    "Well A": {
+        "Package": "Package A",
+        "Service": "Standard Wells",
+        "Hole Sections": {
+            '12.25"': {"Quantity": 2, "Total Months": 1, "Depth": 5500},
+            '8.5"': {"Quantity": 2, "Total Months": 1, "Depth": 8000}
+        },
+        # Map to the special-case group keys you already use in special_cases_map
+        "Tool Groups": [
+            "PEX-AIT (150DegC Max)",
+            "DOBMI (150DegC Max)",   # map to DOBMI group in your special_cases_map
+            "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)",
+            "XL Rock (150DegC Max)",
+            "Pipe Conveyed Logging",
+            "FPIT & Back-off services / Drilling ontingent Support Services",
+            "Unit, Cables & Conveyance",
+            "Personnel",
+        ]
+    }
+}
+
+# --- Reference Well Selector (sidebar) ---
+st.sidebar.header("Reference Well Selection")
+selected_well = st.sidebar.selectbox("Reference Well", ["None"] + list(reference_wells.keys()), index=0)
+
 if uploaded_file:
     # --- Reset unique tracker when a new file is uploaded ---
     if "last_uploaded_name" not in st.session_state or st.session_state["last_uploaded_name"] != uploaded_file.name:
@@ -18,10 +45,6 @@ if uploaded_file:
     if st.sidebar.button("Reset unique-tool usage (AU14, etc.)", key="reset_unique"):
         st.session_state["unique_tracker"] = set()
         st.sidebar.success("Unique-tool tracker cleared.")
-
-    # --- Well A Integration ---
-    st.sidebar.header("Well Selection")
-    well_option = st.sidebar.selectbox("Select Well", ["None", "Well A"], key="well_select")
 
     # Read data
     df = pd.read_excel(uploaded_file, sheet_name="Data")
@@ -34,33 +57,49 @@ if uploaded_file:
     # Unique tools across sections
     unique_tools = {"AU14: AUX_SURELOC"}
 
+    # --- Well selection (top of sidebar) ---
+    st.sidebar.header("Well Selection")
+    # keep original selectbox too, but show chosen reference well state
+    well_option = selected_well  # "None" or "Well A"
+
     # --- Dynamic Hole Section Setup ---
     st.sidebar.header("Hole Sections Setup")
-    num_sections = st.sidebar.number_input("Number of Hole Sections", min_value=1, max_value=5, value=2, step=1)
-    hole_sizes = []
-    for i in range(num_sections):
-        hole_size = st.sidebar.text_input(f"Hole Section {i+1} Size (inches)", value=f"{12.25 - i*3.75:.2f}")
-        hole_sizes.append(hole_size)
+    # If Well A selected, default number of sections = 2, else default 2 (same)
+    default_num_sections = 2 if well_option == "Well A" else 2
+    num_sections = st.sidebar.number_input("Number of Hole Sections", min_value=1, max_value=5, value=default_num_sections, step=1)
 
-    # Prefill parameters if Well A is selected
+    # If Well A selected, use its hole sizes as defaults; otherwise use calculated defaults
+    hole_sizes = []
     if well_option == "Well A":
-        # Well A defaults per hole section
-        well_a_defaults_per_section = {
-            '12.25': {"Package": "Package A", "Service Name": "Standard Wells", "qty": 2, "months": 1, "depth": 5500},
-            '8.5': {"Package": "Package A", "Service Name": "Standard Wells", "qty": 2, "months": 1, "depth": 8000}
-        }
-        
+        # Use exact keys from reference_wells (keeps the inch formatting)
+        hole_sizes = list(reference_wells["Well A"]["Hole Sections"].keys())
+        # If user changed num_sections and it doesn't match default, allow editing below; but default hole sizes are used initially
+        # If UI number_input changed to different value, still show fields for each index—we'll fallback to provided default formatting
+        if len(hole_sizes) < num_sections:
+            # append generic sizes if necessary
+            for i in range(len(hole_sizes), num_sections):
+                hole_sizes.append(f'{12.25 - i*3.75:.2f}')
+        elif len(hole_sizes) > num_sections:
+            hole_sizes = hole_sizes[:num_sections]
+    else:
+        for i in range(num_sections):
+            hole_size = st.sidebar.text_input(f"Hole Section {i+1} Size (inches)", value=f"{12.25 - i*3.75:.2f}")
+            hole_sizes.append(hole_size)
+
+    # If Well A selected, prefill session_state defaults for qty/months/depth & package/service
+    if well_option == "Well A":
+        well_info = reference_wells["Well A"]
         for hole_size in hole_sizes:
-            key_size = str(float(hole_size))
-            defaults = well_a_defaults_per_section.get(key_size, {})
-            if defaults:
-                st.session_state[f"qty_{hole_size}"] = defaults["qty"]
-                st.session_state[f"months_{hole_size}"] = defaults["months"]
-                st.session_state[f"depth_{hole_size}"] = defaults["depth"]
-                # Also prefill Package and Service Name
-                st.session_state[f"pkg_{hole_size}"] = defaults["Package"]
-                st.session_state[f"svc_{hole_size}"] = defaults["Service Name"]
-                
+            # Use the exact key like '12.25"' or '8.5"'
+            if hole_size in well_info["Hole Sections"]:
+                info = well_info["Hole Sections"][hole_size]
+                # Set session state defaults (will be used by number_input default values below)
+                st.session_state.setdefault(f"qty_{hole_size}", info.get("Quantity", 2))
+                st.session_state.setdefault(f"months_{hole_size}", info.get("Total Months", 1))
+                st.session_state.setdefault(f"depth_{hole_size}", info.get("Depth", 5500))
+                # set package/service default placeholders (we'll apply when options exist)
+                st.session_state.setdefault(f"pkg_default_for_{hole_size}", well_info["Package"])
+                st.session_state.setdefault(f"svc_default_for_{hole_size}", well_info["Service"])
     # Create dynamic tabs
     tabs = st.tabs([f'{hs}" Hole Section' for hs in hole_sizes])
     section_totals = {}
@@ -73,26 +112,93 @@ if uploaded_file:
 
             # Sidebar inputs per section
             st.sidebar.subheader(f"Inputs for {hole_size}\" Section")
-            quantity_tools = st.sidebar.number_input(f"Quantity of Tools ({hole_size})", min_value=1, value=st.session_state.get(f"qty_{hole_size}",2), key=f"qty_{hole_size}")
-            total_days = st.sidebar.number_input(f"Total Days ({hole_size})", min_value=0, value=st.session_state.get(f"days_{hole_size}",0), key=f"days_{hole_size}")
-            total_months = st.sidebar.number_input(f"Total Months ({hole_size})", min_value=0, value=st.session_state.get(f"months_{hole_size}",1), key=f"months_{hole_size}")
-            total_depth = st.sidebar.number_input(f"Total Depth (ft) ({hole_size})", min_value=0, value=st.session_state.get(f"depth_{hole_size}",5500), key=f"depth_{hole_size}")
-            total_survey = st.sidebar.number_input(f"Total Survey (ft) ({hole_size})", min_value=0, value=st.session_state.get(f"survey_{hole_size}",0), key=f"survey_{hole_size}")
-            total_hours = st.sidebar.number_input(f"Total Hours ({hole_size})", min_value=0, value=st.session_state.get(f"hours_{hole_size}",0), key=f"hours_{hole_size}")
-            discount = st.sidebar.number_input(f"Discount (%) ({hole_size})", min_value=0.0, max_value=100.0, value=st.session_state.get(f"disc_{hole_size}",0.0)*100, key=f"disc_{hole_size}") / 100.0
+            # Use session_state default values if set (these were set above when Well A selected)
+            quantity_tools = st.sidebar.number_input(
+                f"Quantity of Tools ({hole_size})",
+                min_value=1,
+                value=st.session_state.get(f"qty_{hole_size}", 2),
+                key=f"qty_{hole_size}"
+            )
+            total_days = st.sidebar.number_input(
+                f"Total Days ({hole_size})", min_value=0, value=st.session_state.get(f"days_{hole_size}", 0), key=f"days_{hole_size}"
+            )
+            total_months = st.sidebar.number_input(
+                f"Total Months ({hole_size})",
+                min_value=0,
+                value=st.session_state.get(f"months_{hole_size}", 1),
+                key=f"months_{hole_size}"
+            )
+            total_depth = st.sidebar.number_input(
+                f"Total Depth (ft) ({hole_size})",
+                min_value=0,
+                value=st.session_state.get(f"depth_{hole_size}", 5500),
+                key=f"depth_{hole_size}"
+            )
+            total_survey = st.sidebar.number_input(
+                f"Total Survey (ft) ({hole_size})", min_value=0, value=st.session_state.get(f"survey_{hole_size}", 0), key=f"survey_{hole_size}"
+            )
+            total_hours = st.sidebar.number_input(
+                f"Total Hours ({hole_size})", min_value=0, value=st.session_state.get(f"hours_{hole_size}", 0), key=f"hours_{hole_size}"
+            )
+            # disc stored in session state earlier may be fraction or percent — ensure consistent default
+            disc_default = st.session_state.get(f"disc_{hole_size}", 0.0)
+            if disc_default > 1.0:
+                # if earlier stored as percent e.g. 5.0, convert to fraction
+                disc_default_fraction = disc_default / 100.0
+            else:
+                disc_default_fraction = disc_default
+            discount = st.sidebar.number_input(
+                f"Discount (%) ({hole_size})",
+                min_value=0.0,
+                max_value=100.0,
+                value=disc_default_fraction * 100,
+                key=f"disc_{hole_size}"
+            ) / 100.0
 
             # --- Package & Service ---
             st.subheader("Select Package")
             package_options = df["Package"].dropna().unique().tolist()
-            selected_package = st.selectbox("Choose Package", package_options, key=f"pkg_{hole_size}")
+            # If Well A selected and Package A exists in options, choose it by default; otherwise show normal selectbox
+            default_pkg = None
+            if well_option == "Well A":
+                pkg_candidate = reference_wells["Well A"]["Package"]
+                if pkg_candidate in package_options:
+                    default_pkg = pkg_candidate
+            if default_pkg:
+                # set selected index to default
+                try:
+                    selected_package = st.selectbox("Choose Package", package_options, index=package_options.index(default_pkg), key=f"pkg_{hole_size}")
+                except Exception:
+                    selected_package = st.selectbox("Choose Package", package_options, key=f"pkg_{hole_size}")
+            else:
+                selected_package = st.selectbox("Choose Package", package_options, key=f"pkg_{hole_size}")
             package_df = df[df["Package"] == selected_package]
 
             st.subheader("Select Service Name")
             service_options = package_df["Service Name"].dropna().unique().tolist()
-            selected_service = st.selectbox("Choose Service Name", service_options, key=f"svc_{hole_size}")
+            # prefer "Standard Wells" when Well A selected
+            default_svc = None
+            if well_option == "Well A":
+                svc_candidate = reference_wells["Well A"]["Service"]
+                if svc_candidate in service_options:
+                    default_svc = svc_candidate
+            if default_svc:
+                try:
+                    selected_service = st.selectbox("Choose Service Name", service_options, index=service_options.index(default_svc), key=f"svc_{hole_size}")
+                except Exception:
+                    selected_service = st.selectbox("Choose Service Name", service_options, key=f"svc_{hole_size}")
+            else:
+                # fallback to normal selectbox (still editable)
+                if len(service_options) == 0:
+                    # empty list; show empty selectbox to avoid error
+                    selected_service = st.selectbox("Choose Service Name", [""], index=0, key=f"svc_{hole_size}")
+                else:
+                    selected_service = st.selectbox("Choose Service Name", service_options, key=f"svc_{hole_size}")
+
             df_service = package_df[package_df["Service Name"] == selected_service]
 
             # --- Tool selection with special cases ---
+            # Build the special_cases_map exactly as in your original code so the groups match
             code_list = df_service["Specification 1"].dropna().unique().tolist()
             special_cases_map = {
                 "STANDARD WELLS": {
@@ -100,7 +206,7 @@ if uploaded_file:
                     "PEX-AIT-DSI (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","NE1: NEUT_THER","DE1: DENS_FULL","RE1: RES_INDU",
                                                  "AU3:AUX_INCL", "AU2: AUX_PCAL", "AU2: AUX_PCAL", "AC3: ACOU_3", "PP7: PROC_PETR7", "PA7: PROC_ACOU6",
                                                  "PA11: PROC_ACOU13", "PA12: PROC_ACOU14"],
-                    "DSI-DOBMI (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL","AC3: ACOU_3",
+                    "DOBMI (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL","AC3: ACOU_3",
                                             "AU2: AUX_PCAL","AU2: AUX_PCAL","PP7: PROC_PETR7","PA7: PROC_ACOU6",
                                             "PA11: PROC_ACOU13","PA12: PROC_ACOU14","IM3: IMAG_SOBM","PI1: PROC_IMAG1",
                                             "PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8","PI9: PROC_IMAG9",
@@ -117,7 +223,7 @@ if uploaded_file:
                                                               "PI8:PROC_IMAG8", "PI9:PROC_IMAG9", "PI12: PROC_IMAG12", "PI13: PROC_IMAG13", "RE4: RES_ANIS"],
                     "Pipe Conveyed Logging": ["CO1: CONV_PCL"],
                     "FPIT & Back-off services / Drilling ontingent Support Services": ["AU7: AUX_SBOX","PC5: PC_10KH2S","PR1: PR_FP","PR2: PR_BO","PR3: PR_TP","AU11: AUX_GRCCL",
-                                                                                      "PR7: PR_CST","MS1: MS_PL","MS3:MS_JB"],
+                                                                                      "PR7: PR_CST","MS1: MS_PL","MS3: MS_JB"],
                     "Unit, Cables & Conveyance": ["LU1: LUDR_ZON2","CA9: CABL_HSOH_1","CA3: CABL_HSOH","CA8: CABL_STCH_2","DT2:RTDT_SAT"],
                     "XL Rock (150DegC Max)": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2"],
                     "XL Rock (150DegC Max) With Core Detection": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2", "SC4: SC_ADD4"],
@@ -128,7 +234,15 @@ if uploaded_file:
 
             special_cases = special_cases_map.get(selected_service, {})
             code_list_with_special = list(special_cases.keys()) + code_list
-            selected_codes = st.multiselect("Select Tools (by Specification 1)", code_list_with_special, key=f"tools_{hole_size}")
+
+            # If Well A is selected, automatically preselect the Well A tool groups (only those keys that actually exist in code_list_with_special)
+            default_selected_groups = []
+            if well_option == "Well A":
+                default_groups = reference_wells["Well A"]["Tool Groups"]
+                # Only include groups that are present in code_list_with_special
+                default_selected_groups = [g for g in default_groups if g in code_list_with_special]
+
+            selected_codes = st.multiselect("Select Tools (by Specification 1)", code_list_with_special, default=default_selected_groups, key=f"tools_{hole_size}")
 
             # --- Expand selected special cases ---
             expanded_codes = []
@@ -140,6 +254,8 @@ if uploaded_file:
                 else:
                     expanded_codes.append(code)
 
+            # --- If Well A selected AND special groups were auto-selected above, ensure the mapped codes from special_cases are included even if df_service doesn't contain all codes.
+            # df_tools picks only those present in df_service, so Excel/calculation will use what's present.
             df_tools = df_service[df_service["Specification 1"].isin(expanded_codes)].copy()
 
             # --- Row-by-row display with dividers ---
@@ -147,13 +263,16 @@ if uploaded_file:
                 display_rows = []
                 inserted_dividers = set()
                 for sc in used_special_cases:
+                    # Divider row
                     divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
                     divider["Specification 1"] = f"--- {sc} ---"
                     display_rows.append(divider)
+                    # All items for this special case
                     for item in special_cases[sc]:
                         item_rows = df_tools[df_tools["Specification 1"] == item]
                         display_rows.extend([row.to_frame().T for _, row in item_rows.iterrows()])
 
+                # Non-special tools
                 for item in df_tools["Specification 1"]:
                     if item not in sum(special_cases.values(), []):
                         item_rows = df_tools[df_tools["Specification 1"] == item]
@@ -247,7 +366,8 @@ if st.button("Download Cost Estimate Excel"):
             sheet_name = f'{hole_size}" Hole'
             wb = writer.book
             ws = wb.create_sheet(title=sheet_name)
-# --- Header rows ---
+
+            # --- Header rows ---
             ws.merge_cells("B2:B4"); ws["B2"]="Reference"
             ws.merge_cells("C2:C4"); ws["C2"]="Specification 1"
             ws.merge_cells("D2:D4"); ws["D2"]="Specification 2"
@@ -342,7 +462,7 @@ if st.button("Download Cost Estimate Excel"):
                         rental_charge = qty * ((item_row.get("Daily Rate",0)*total_days) + (item_row.get("Monthly Rate",0)*total_months))*(1-discount_pct)
                         operating_charge = ((item_row.get("Depth Charge (per ft)",0)*total_depth)+
                                             (item_row.get("Survey Charge (per ft)",0)*total_survey)+
-                                            (item_row.get("Flat Rate",0))+
+                                            (item_row.get("Flat Rate",0))+ 
                                             (item_row.get("Hourly Charge",0)*total_hours))*(1-discount_pct)
                         total_myr = rental_charge + operating_charge
 
@@ -388,7 +508,7 @@ if st.button("Download Cost Estimate Excel"):
                         rental_charge = qty * ((item_row.get("Daily Rate",0)*total_days) + (item_row.get("Monthly Rate",0)*total_months))*(1-discount_pct)
                         operating_charge = ((item_row.get("Depth Charge (per ft)",0)*total_depth)+
                                             (item_row.get("Survey Charge (per ft)",0)*total_survey)+
-                                            (item_row.get("Flat Rate",0))+
+                                            (item_row.get("Flat Rate",0))+ 
                                             (item_row.get("Hourly Charge",0)*total_hours))*(1-discount_pct)
                         total_myr = rental_charge + operating_charge
 
@@ -409,10 +529,3 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
-
-
-
-
-
-
