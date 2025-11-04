@@ -284,12 +284,21 @@ if uploaded_file:
             special_cases = special_cases_map.get(selected_service, {})
             code_list_with_special = list(special_cases.keys()) + code_list
 
-            # If Well A is selected, automatically preselect the Well A tool groups (only those keys that actually exist in code_list_with_special)
+            # If Well A is selected, automatically preselect the Well A tool groups
             default_selected_groups = []
             if well_option == "Well A":
                 default_groups = reference_wells["Well A"]["Tool Groups"]
-                # Only include groups that are present in code_list_with_special
                 default_selected_groups = [g for g in default_groups if g in code_list_with_special]
+            
+                # Exclude certain groups for 12.25" Hole Section
+                if hole_size == '12.25"':
+                    exclude_services_12_25 = [
+                        "Pipe Conveyed Logging",
+                        "FPIT & Back-off services / Drilling ontingent Support Services",
+                        "Unit, Cables & Conveyance",
+                        "Personnel"
+                    ]
+                    default_selected_groups = [g for g in default_selected_groups if g not in exclude_services_12_25]
 
             selected_codes = st.multiselect("Select Tools (by Specification 1)", code_list_with_special, default=default_selected_groups, key=f"tools_{hole_size}")
 
@@ -578,6 +587,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
