@@ -191,8 +191,12 @@ if uploaded_file:
                 "Personnel"
             ]
             
+            default_selected_groups = [g for g in default_groups if g in code_list_with_special]
+            
             if well_option == "Well A" and hole_size == '12.25"':
-                service_options = [svc for svc in service_options if svc not in exclude_services_12_25]
+                # Remove excluded groups
+                default_selected_groups = [g for g in default_selected_groups if g not in exclude_services_12_25]
+
             
             # Always allow blank option
             if "" not in service_options:
@@ -561,6 +565,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
