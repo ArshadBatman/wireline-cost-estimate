@@ -156,17 +156,17 @@ if uploaded_file:
             ) / 100.0
 
            # --- Package & Service ---
+            # --- Package & Service ---
             st.subheader("Select Package")
             package_options = df["Package"].dropna().unique().tolist()
             
-            # Default package if Well A
+            # --- Default package logic for Well A ---
             default_pkg = None
             if well_option == "Well A":
-                pkg_candidate = reference_wells["Well A"]["Package"]  # "Package A"
+                pkg_candidate = reference_wells["Well A"]["Package"]
                 if pkg_candidate in package_options:
                     default_pkg = pkg_candidate
             
-            # Select Package (prefill if applicable)
             if default_pkg:
                 try:
                     selected_package = st.selectbox(
@@ -179,16 +179,29 @@ if uploaded_file:
             
             package_df = df[df["Package"] == selected_package]
             
+            # --- Service Name selection ---
             st.subheader("Select Service Name")
-            # Include only relevant Service + blank rows
             service_options = package_df["Service Name"].dropna().unique().tolist()
-            service_options = [svc for svc in service_options if svc.strip() != ""]  # remove pure blanks
-            service_options += [""]  # always allow blank option
+            service_options = [svc for svc in service_options if svc.strip() != ""]  # remove empty strings
+            
+            # Exclude certain services for 12.25" Hole Section in Well A
+            exclude_services_12_25 = [
+                "Pipe Conveyed Logging",
+                "FPIT & Back-off services / Drilling ontingent Support Services",
+                "Unit, Cables & Conveyance",
+                "Personnel"
+            ]
+            
+            if well_option == "Well A" and hole_size == "12.25":
+                service_options = [svc for svc in service_options if svc not in exclude_services_12_25]
+            
+            # Always allow blank option
+            service_options += [""]
             
             # Default service if Well A
             default_svc = None
             if well_option == "Well A":
-                svc_candidate = reference_wells["Well A"]["Service"]  # "Standard Wells"
+                svc_candidate = reference_wells["Well A"]["Service"]  # usually "Standard Wells"
                 if svc_candidate in service_options:
                     default_svc = svc_candidate
             
@@ -201,14 +214,19 @@ if uploaded_file:
                 except Exception:
                     selected_service = st.selectbox("Choose Service Name", service_options, key=f"svc_{hole_size}")
             else:
-                selected_service = st.selectbox("Choose Service Name", service_options, key=f"svc_{hole_size}")
+                # fallback to normal selectbox
+                if len(service_options) == 0:
+                    selected_service = st.selectbox("Choose Service Name", [""], index=0, key=f"svc_{hole_size}")
+                else:
+                    selected_service = st.selectbox("Choose Service Name", service_options, key=f"svc_{hole_size}")
             
-            # Filter DataFrame: include only selected service + blank cells
+            # --- Filter DataFrame based on selected service (including blanks) ---
             df_service = package_df[
                 (package_df["Service Name"] == selected_service) | 
                 (package_df["Service Name"].isna()) | 
                 (package_df["Service Name"] == "")
             ]
+
 
 
             # --- Tool selection with special cases ---
@@ -543,4 +561,5 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
