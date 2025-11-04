@@ -116,8 +116,12 @@ if uploaded_file:
                                                               "AU2:AUX_PCAL", "IM4:IMAG_ADD1","PI1:PROC_IMAG1", "DT4:SONIC-WELL-P/S-DIG", "PI2: PROC_IMAG2", "PI7: PROC_IMAG7",
                                                               "PI8:PROC_IMAG8", "PI9:PROC_IMAG9", "PI12: PROC_IMAG12", "PI13: PROC_IMAG13", "RE4: RES_ANIS"],
                     "Pipe Conveyed Logging": ["CO1: CONV_PCL"],
+                    "FPIT & Back-off services / Drilling ontingent Support Services": ["AU7: AUX_SBOX","PC5: PC_10KH2S","PR1: PR_FP","PR2: PR_BO","PR3: PR_TP","AU11: AUX_GRCCL",
+                                                                                      "PR7: PR_CST","MS1: MS_PL","MS3:MS_JB"],
+                    "Unit, Cables & Conveyance": ["LU1: LUDR_ZON2","CA9: CABL_HSOH_1","CA3: CABL_HSOH","CA8: CABL_STCH_2","DT2:RTDT_SAT"],
                     "XL Rock (150DegC Max)": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2"],
                     "XL Rock (150DegC Max) With Core Detection": ["AU14: AUX_SURELOC","SC2: SC_ADD1","SC2: SC_ADD2", "SC4: SC_ADD4"]
+                    "Personnel": ["PER1:PWFE","PER2:PWSO","PER3:PWOP", "PER4:PWSE"]
                 },
                 "HT WELLS": {}
             }
@@ -405,6 +409,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
