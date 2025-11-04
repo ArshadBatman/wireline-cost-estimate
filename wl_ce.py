@@ -472,7 +472,7 @@ if st.button("Download Cost Estimate Excel"):
                         ws[f"F{current_row}"] = item_row.get("Monthly Rate",0)
                         ws[f"G{current_row}"] = item_row.get("Depth Charge (per ft)",0)
                         ws[f"H{current_row}"] = item_row.get("Survey Charge (per ft)",0)
-                        ws[f"I{current_row}"] = item_row.get("Flat Rate",0)
+                        ws[f"I{current_row}"] = item_row.get("Flat Charge",0)
                         ws[f"J{current_row}"] = item_row.get("Hourly Charge",0)
 
                         # Operation Estimated values
@@ -563,6 +563,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
