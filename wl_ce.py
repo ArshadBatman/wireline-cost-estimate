@@ -14,8 +14,8 @@ reference_wells = {
         "Package": "Package A",
         "Service": "Standard Wells",
         "Hole Sections": {
-            '12.25': {"Quantity": 2, "Total Months": 1, "Depth": 5500},
-            '8.5': {"Quantity": 2, "Total Months": 1, "Depth": 8000}
+            '12.25"': {"Quantity": 2, "Total Months": 1, "Depth": 5500},
+            '8.5"': {"Quantity": 2, "Total Months": 1, "Depth": 8000}
         },
         # Map to the special-case group keys you already use in special_cases_map
         "Tool Groups": [
@@ -561,6 +561,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
