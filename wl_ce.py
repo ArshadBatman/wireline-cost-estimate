@@ -156,7 +156,6 @@ if uploaded_file:
             ) / 100.0
 
            # --- Package & Service ---
-            # --- Package & Service ---
             st.subheader("Select Package")
             package_options = df["Package"].dropna().unique().tolist()
             
@@ -561,5 +560,6 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
