@@ -224,11 +224,12 @@ if uploaded_file:
             code_list = df_service["Specification 1"].dropna().unique().tolist()
             special_cases_map = {
                 "STANDARD WELLS": {
+                    "PEX-Rt Scanner (150DegC Max)": ["AU14: AUX_SURELOC","NE1: NEUT_THER","DE1: DENS_FULL","RE4: RES_ANIS"],
                     "PEX-AIT (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","NE1: NEUT_THER","DE1: DENS_FULL","RE1: RES_INDU"],
                     "PEX-AIT-DSI (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","NE1: NEUT_THER","DE1: DENS_FULL","RE1: RES_INDU",
                                                  "AU3:AUX_INCL", "AU2: AUX_PCAL", "AU2: AUX_PCAL", "AC3: ACOU_3", "PP7: PROC_PETR7", "PA7: PROC_ACOU6",
                                                  "PA11: PROC_ACOU13", "PA12: PROC_ACOU14"],
-                    "DOBMI (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL","AC3: ACOU_3",
+                    "Dual-OBMI DSI (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL","AC3: ACOU_3",
                                             "AU2: AUX_PCAL","AU2: AUX_PCAL","PP7: PROC_PETR7","PA7: PROC_ACOU6",
                                             "PA11: PROC_ACOU13","PA12: PROC_ACOU14","IM3: IMAG_SOBM","PI1: PROC_IMAG1",
                                             "PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8","PI9: PROC_IMAG9",
@@ -239,6 +240,7 @@ if uploaded_file:
                                                                       "FP34: FPS_FCHA_7","FP14: FPS_PUMP","FP14: FPS_PUMP",
                                                                       "FP42: FPS_PROB_LD","FP11: FPS_PROB_FO","FP26: FPS_FCON",
                                                                       "DT3: RTDT_PER","PPT12: PROC_PT12","FP7: FPS_SPPT_2"],
+                    "ECS-NMR (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","EC1: ES_1","NM1: NMR_1","PN1: PROC_NMR1","PN2: PROC_NMR2","PN6: PROC_NMR6","PE1: PROC_ES1","PP1: PROC_PETR1","PP6: PROC_PETR6", "PN3: PROC_NMR3"],
                     "IBC (PowerFlex)-CBL (150DegC Max)": ["CE1:CES_CBL","CE4:CES_CBI_3","CE6:CES_CBI_5", "DT3:RTDT_PER", "PPT13:PROC_PT13", "DT12:USI-DIG-LP-CET3"],
                     "DSI-QuantaGeo-Rt Scanner (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL", "AC4: ACOU_ADD1", "AC3: ACOU_3", "AU2:AUX_PCAL",
                                                               "AU2:AUX_PCAL", "IM4:IMAG_ADD1","PI1:PROC_IMAG1", "DT4:SONIC-WELL-P/S-DIG", "PI2: PROC_IMAG2", "PI7: PROC_IMAG7",
@@ -560,6 +562,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
