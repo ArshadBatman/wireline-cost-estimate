@@ -19,8 +19,9 @@ reference_wells = {
         },
         # Map to the special-case group keys you already use in special_cases_map
         "Tool Groups": [
-            "PEX-AIT (150DegC Max)",
-            "DOBMI (150DegC Max)",   # map to DOBMI group in your special_cases_map
+            "PEX-Rt Scanner (150DegC Max)",
+            "ECS-NMR (150DegC Max)",
+            "Dual-OBMI DSI (150DegC Max)",   # map to DOBMI group in your special_cases_map
             "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)",
             "XL Rock (150DegC Max)",
             "Pipe Conveyed Logging",
@@ -562,6 +563,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
