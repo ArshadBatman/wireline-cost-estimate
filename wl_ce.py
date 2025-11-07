@@ -324,78 +324,38 @@ if uploaded_file:
                 st.dataframe(display_df.style.apply(highlight_divider, axis=1))
 
             # --- Calculation ---
-            # --- Calculated Costs Table (Editable) ---
-            if not df_tools.empty:
-                # Build display/calc table with dividers exactly as in Selected Data
-                display_rows = []
-                for sc in used_special_cases:
-                    # Divider row
-                    divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
-                    divider["Specification 1"] = f"--- {sc} ---"
-                    display_rows.append(divider)
+            calc_df = display_df.copy()
             
-                    # All items for this special case
-                    for item in special_cases[sc]:
-                        item_rows = df_tools[df_tools["Specification 1"] == item]
-                        display_rows.extend([row.to_frame().T for _, row in item_rows.iterrows()])
+            # Ensure calculation columns exist
+            for col in ["Operating Charge (MYR)", "Rental Charge (MYR)", "Total (MYR)"]:
+                if col not in calc_df.columns:
+                    calc_df[col] = 0.0
             
-                # Non-special items
-                for item in df_tools["Specification 1"]:
-                    if item not in sum(special_cases.values(), []):
-                        item_rows = df_tools[df_tools["Specification 1"] == item]
-                        display_rows.extend([row.to_frame().T for _, row in item_rows.iterrows()])
+            # Recalculate row-by-row
+            for i, row in calc_df.iterrows():
+                if str(row["Specification 1"]).startswith("---"):
+                    # Divider row, skip calculations
+                    continue
+                disc = row.get("Discount (%)", 0) / 100
+                op_charge = (
+                    row.get("Depth Charge (per ft)", 0) * row.get("Total Depth (ft)", 0) +
+                    row.get("Survey Charge (per ft)", 0) * row.get("Total Survey (ft)", 0) +
+                    row.get("Flat Charge", 0) +
+                    row.get("Hourly Charge", 0) * row.get("Total Hours", 0)
+                ) * (1 - disc)
+                rent_charge = (
+                    row.get("Quantity of Tools", 0) *
+                    (row.get("Daily Rate", 0) * row.get("Total Days", 0) +
+                     row.get("Monthly Rate", 0) * row.get("Total Months", 0))
+                ) * (1 - disc)
+                calc_df.at[i, "Operating Charge (MYR)"] = op_charge
+                calc_df.at[i, "Rental Charge (MYR)"] = rent_charge
+                calc_df.at[i, "Total (MYR)"] = op_charge + rent_charge
             
-                calc_df = pd.concat(display_rows, ignore_index=True)
+            # Display editable table
+            edited_df = st.data_editor(calc_df, num_rows="dynamic", key=f"calc_editor_{hole_size}")
             
-                # Ensure calculation columns exist
-                for col in ["Operating Charge (MYR)", "Rental Charge (MYR)", "Total (MYR)"]:
-                    if col not in calc_df.columns:
-                        calc_df[col] = 0.0
-            
-                # Function to recalc costs
-                def recalc_costs(df):
-                    df = df.copy()
-                    for i, row in df.iterrows():
-                        if str(row["Specification 1"]).startswith("---"):
-                            # Divider row, skip calculations
-                            continue
-                        disc = row.get("Discount (%)", 0) / 100
-                        op_charge = (
-                            row.get("Depth Charge (per ft)", 0) * row.get("Total Depth (ft)", 0) +
-                            row.get("Survey Charge (per ft)", 0) * row.get("Total Survey (ft)", 0) +
-                            row.get("Flat Charge", 0) +
-                            row.get("Hourly Charge", 0) * row.get("Total Hours", 0)
-                        ) * (1 - disc)
-                        rent_charge = (
-                            row.get("Quantity of Tools", 0) *
-                            (row.get("Daily Rate", 0) * row.get("Total Days", 0) +
-                             row.get("Monthly Rate", 0) * row.get("Total Months", 0))
-                        ) * (1 - disc)
-                        df.at[i, "Operating Charge (MYR)"] = op_charge
-                        df.at[i, "Rental Charge (MYR)"] = rent_charge
-                        df.at[i, "Total (MYR)"] = op_charge + rent_charge
-                    return df
-            
-                # Initialize session state
-                if f"calc_state_{hole_size}" not in st.session_state:
-                    st.session_state[f"calc_state_{hole_size}"] = recalc_costs(calc_df)
-            
-                # Editable table
-                st.subheader(f"Calculated Costs - Package {selected_package}, Service {selected_service}")
-                edited_df = st.data_editor(
-                    st.session_state[f"calc_state_{hole_size}"],
-                    num_rows="dynamic",
-                    key=f"calc_editor_{hole_size}"
-                )
-            
-                # Recalculate after edits
-                st.session_state[f"calc_state_{hole_size}"] = recalc_costs(edited_df)
-            
-                # Section total
-                section_total = st.session_state[f"calc_state_{hole_size}"]["Total (MYR)"].sum()
-                st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
-
-            
+                        
                         
 
 
@@ -574,6 +534,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
