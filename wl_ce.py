@@ -320,17 +320,10 @@ if uploaded_file:
 
             # --- Calculation ---
             # --- Build Calculated Costs table from display_df ---
-            if 'display_df' in locals():
-                calc_df = display_df.copy()
-            else:
-                # No tools selected: create empty DataFrame with required columns
-                calc_df = pd.DataFrame(columns=[
-                    "Source","Ref Item","Specification 1","Specification 2","Daily Rate","Monthly Rate",
-                    "Depth Charge (per ft)","Survey Charge (per ft)","Flat Charge","Hourly Charge",
-                    "Quantity of Tools","Total Days","Total Months","Total Depth (ft)",
-                    "Total Survey (ft)","Total Hours","Discount (%)","Total (MYR)"
-    ])
             
+            calc_df = display_df.copy()
+           
+   
             numeric_cols = ["Quantity of Tools","Total Days","Total Months","Total Depth (ft)",
                             "Total Survey (ft)","Total Hours","Discount (%)","Daily Rate",
                             "Monthly Rate","Depth Charge (per ft)","Flat Charge","Survey Charge (per ft)","Hourly Charge"]
@@ -592,6 +585,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
