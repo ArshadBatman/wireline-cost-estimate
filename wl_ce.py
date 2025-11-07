@@ -377,8 +377,37 @@ if uploaded_file:
                 # Recalculate immediately after any edit
                 st.session_state[f"calc_state_{hole_size}"] = recalc_costs(edited_df)
                 
-                # Display updated totals
+                # --- Display updated totals ---
                 final_df = st.session_state[f"calc_state_{hole_size}"]
+                
+                # --- Insert divider rows per tool for display ---
+                display_df = final_df.copy()
+                display_df = display_df.sort_values(by=["Source", "Ref Item"])
+                
+                divider_rows = []
+                for i, row in display_df.iterrows():
+                    divider_rows.append(row)
+                    divider_rows.append({
+                        "Source": "", "Ref Item": "", "Code": "", "Items": "", 
+                        "Daily Rate": "", "Monthly Rate": "", "Depth Charge (per ft)": "",
+                        "Flat Rate": "", "Survey Charge (per ft)": "", "Hourly Charge": "",
+                        "Quantity of Tools": "", "Total Days": "", "Total Months": "",
+                        "Total Depth (ft)": "", "Total Survey (ft)": "", "Total Hours": "",
+                        "Discount (%)": "", "Operating Charge (MYR)": "", 
+                        "Rental Charge (MYR)": "", "Total (MYR)": ""
+                    })
+                
+                display_df = pd.DataFrame(divider_rows)
+                
+                # --- Pass to data_editor ---
+                edited_df = st.data_editor(
+                    display_df,
+                    num_rows="dynamic",
+                    key=f"calc_editor_{hole_size}",
+                )
+
+
+                
                 section_total = final_df["Total (MYR)"].sum()
                 section_totals[hole_size] = section_total
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
@@ -562,6 +591,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
