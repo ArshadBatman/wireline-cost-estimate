@@ -343,23 +343,42 @@ if uploaded_file:
             # --- Recalc function ---
             def recalc_costs(df):
                 df = df.copy()
+                
+                # Ensure necessary columns exist
+                numeric_cols = ["Quantity of Tools","Total Days","Total Months","Total Depth (ft)",
+                                "Total Survey (ft)","Total Hours","Discount (%)",
+                                "Daily Rate","Monthly Rate","Depth Charge (per ft)",
+                                "Flat Charge","Survey Charge (per ft)","Hourly Charge"]
+                for col in numeric_cols:
+                    if col not in df.columns:
+                        df[col] = 0
+                if "Specification 1" not in df.columns:
+                    df["Specification 1"] = ""  # Add empty column if missing
+            
                 totals = []
                 for idx, row in df.iterrows():
-                    if str(row["Specification 1"]).startswith("---"):
+                    spec = str(row.get("Specification 1",""))
+                    if spec.startswith("---"):
                         totals.append(0)
                         continue
-                    disc_fraction = row["Discount (%)"]/100
+            
+                    disc_fraction = row.get("Discount (%)",0)/100
                     operating_charge = (
-                        (row["Depth Charge (per ft)"]*row["Total Depth (ft)"]) +
-                        (row["Survey Charge (per ft)"]*row["Total Survey (ft)"]) +
-                        row["Flat Charge"] +
-                        (row["Hourly Charge"]*row["Total Hours"])
+                        (row.get("Depth Charge (per ft)",0)*row.get("Total Depth (ft)",0)) +
+                        (row.get("Survey Charge (per ft)",0)*row.get("Total Survey (ft)",0)) +
+                        row.get("Flat Charge",0) +
+                        (row.get("Hourly Charge",0)*row.get("Total Hours",0))
                     ) * (1-disc_fraction)
-                    rental_charge = row["Quantity of Tools"]*((row["Daily Rate"]*row["Total Days"])+(row["Monthly Rate"]*row["Total Months"]))*(1-disc_fraction)
+                    rental_charge = row.get("Quantity of Tools",0) * (
+                        (row.get("Daily Rate",0)*row.get("Total Days",0)) +
+                        (row.get("Monthly Rate",0)*row.get("Total Months",0))
+                    ) * (1-disc_fraction)
                     total = operating_charge + rental_charge
                     totals.append(total)
+            
                 df["Total (MYR)"] = totals
                 return df
+
     
             # --- Editable Calculated Costs table ---
             st.subheader("Calculated Costs Table")
@@ -558,6 +577,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
