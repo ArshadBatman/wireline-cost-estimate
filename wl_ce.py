@@ -384,23 +384,30 @@ if uploaded_file:
                     return df
     
     
-        
+                # Sanitize hole size for keys
+                safe_hole_size = hole_size.replace('"', '_').replace('.', '_')
+                
                 # --- Editable Calculated Costs table ---
                 st.subheader("Calculated Costs Table")
-                if f"calc_state_{hole_size}" not in st.session_state:
-                    st.session_state[f"calc_state_{hole_size}"] = recalc_costs(calc_df)
-        
+                calc_key = f"calc_state_{safe_hole_size}"
+                
+                if calc_key not in st.session_state:
+                    st.session_state[calc_key] = recalc_costs(calc_df)
+                
                 edited_df = st.data_editor(
-                    st.session_state[f"calc_state_{hole_size}"],
+                    st.session_state[calc_key],
                     num_rows="dynamic",
-                    key=f"calc_editor_{hole_size}"
+                    key=f"calc_editor_{safe_hole_size}"
                 )
-                st.session_state[f"calc_state_{hole_size}"] = recalc_costs(edited_df)
-        
-                # Show section total
-                section_total = st.session_state[f"calc_state_{hole_size}"]["Total (MYR)"].sum()
+                
+                # Update the session_state with recalculated values
+                st.session_state[calc_key] = recalc_costs(edited_df)
+                
+                # Section total
+                section_total = st.session_state[calc_key]["Total (MYR)"].sum()
                 section_totals[hole_size] = section_total
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
+
                     
                 # Store for Excel download
                 all_calc_dfs_for_excel.append((hole_size, used_special_cases, df_tools, special_cases))
@@ -582,6 +589,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
