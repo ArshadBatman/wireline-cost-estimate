@@ -51,11 +51,6 @@ if uploaded_file:
     # Read data
     df = pd.read_excel(uploaded_file, sheet_name="Data")
 
-    # Ensure required columns exist
-    for col in ["Flat Rate", "Depth Charge (per ft)", "Source"]:
-        if col not in df.columns:
-            df[col] = 0 if "Rate" in col else "Data"
-
     # Unique tools across sections
     unique_tools = {"AU14: AUX_SURELOC"}
 
@@ -587,6 +582,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
