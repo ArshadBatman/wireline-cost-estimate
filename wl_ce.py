@@ -325,34 +325,35 @@ if uploaded_file:
 
             # --- Calculation ---
             if not df_tools.empty:
-                # Initialize calculation DataFrame
-                calc_df = pd.DataFrame()
-                calc_df["Source"] = df_tools["Source"]
-                calc_df["Ref Item"] = df_tools["Reference"]
-                calc_df["Code"] = df_tools["Specification 1"].astype(str).str.strip()
-                calc_df["Items"] = df_tools["Specification 2"]
-                calc_df["Daily Rate"] = pd.to_numeric(df_tools["Daily Rate"], errors="coerce").fillna(0)
-                calc_df["Monthly Rate"] = pd.to_numeric(df_tools["Monthly Rate"], errors="coerce").fillna(0)
-                calc_df["Depth Charge (per ft)"] = pd.to_numeric(df_tools["Depth Charge (per ft)"], errors="coerce").fillna(0)
-                calc_df["Flat Rate"] = pd.to_numeric(df_tools["Flat Charge"], errors="coerce").fillna(0)
-                calc_df["Survey Charge (per ft)"] = 0
-                calc_df["Hourly Charge"] = 0
-                calc_df["Quantity of Tools"] = quantity_tools
-                calc_df["Total Days"] = total_days
-                calc_df["Total Months"] = total_months
-                calc_df["Total Depth (ft)"] = total_depth
-                calc_df["Total Survey (ft)"] = total_survey
-                calc_df["Total Hours"] = total_hours
-                calc_df["Discount (%)"] = discount * 100
+                # --- Initialize calculation DataFrame ---
+                calc_df = pd.DataFrame({
+                    "Source": df_tools["Source"],
+                    "Ref Item": df_tools["Reference"],
+                    "Code": df_tools["Specification 1"].astype(str).str.strip(),
+                    "Items": df_tools["Specification 2"],
+                    "Daily Rate": pd.to_numeric(df_tools["Daily Rate"], errors="coerce").fillna(0),
+                    "Monthly Rate": pd.to_numeric(df_tools["Monthly Rate"], errors="coerce").fillna(0),
+                    "Depth Charge (per ft)": pd.to_numeric(df_tools["Depth Charge (per ft)"], errors="coerce").fillna(0),
+                    "Flat Rate": pd.to_numeric(df_tools["Flat Charge"], errors="coerce").fillna(0),
+                    "Survey Charge (per ft)": 0,
+                    "Hourly Charge": 0,
+                    "Quantity of Tools": quantity_tools,
+                    "Total Days": total_days,
+                    "Total Months": total_months,
+                    "Total Depth (ft)": total_depth,
+                    "Total Survey (ft)": total_survey,
+                    "Total Hours": total_hours,
+                    "Discount (%)": discount * 100
+                })
             
-                # Define calculation function
+                # --- Define calculation function ---
                 def recalc_costs(df):
                     df = df.copy()
                     disc_fraction = df["Discount (%)"] / 100
                     df["Operating Charge (MYR)"] = (
                         (df["Depth Charge (per ft)"] * df["Total Depth (ft)"]) +
                         (df["Survey Charge (per ft)"] * df["Total Survey (ft)"]) +
-                        (df["Flat Rate"]) +
+                        df["Flat Rate"] +
                         (df["Hourly Charge"] * df["Total Hours"])
                     ) * (1 - disc_fraction)
                     df["Rental Charge (MYR)"] = (
@@ -362,47 +363,48 @@ if uploaded_file:
                     df["Total (MYR)"] = df["Operating Charge (MYR)"] + df["Rental Charge (MYR)"]
                     return df
             
-                # Store and display editable data
-                st.subheader(f"Calculated Costs - Package {selected_package}, Service {selected_service}")
-                
-                # Keep DataFrame persistent between reruns
-                if f"calc_state_{hole_size}" not in st.session_state:
-                    st.session_state[f"calc_state_{hole_size}"] = recalc_costs(calc_df)
-                
-                final_df = st.session_state[f"calc_state_{hole_size}"]
-                
-                # --- Build display_df with dividers between tool groups ---
-                display_df = final_df.copy()
-                display_df = display_df.sort_values(by=["Source", "Ref Item"])
-                
-                divider_rows = []
-                for i, row in display_df.iterrows():
-                    divider_rows.append(row)
-                    # Add a blank divider row
-                    divider_rows.append({col: "" for col in display_df.columns})
-                
-                display_df = pd.DataFrame(divider_rows, columns=display_df.columns)
-                
-                # --- Editable table ---
+                # --- Store persistent calculation in session_state ---
+                state_key = f"calc_state_{hole_size}"
+                if state_key not in st.session_state:
+                    st.session_state[state_key] = recalc_costs(calc_df)
+            
+                # --- Auto-recalculate on edit ---
                 edited_df = st.data_editor(
-                    display_df,
+                    st.session_state[state_key],
                     num_rows="dynamic",
-                    key=f"calc_editor_{hole_size}",
+                    key=f"{state_key}_editor",
                 )
-                
-                # --- Recalculate after edits ---
-                st.session_state[f"calc_state_{hole_size}"] = recalc_costs(edited_df)
-                
-                # --- Totals ---
-                final_df = st.session_state[f"calc_state_{hole_size}"]
+                st.session_state[state_key] = recalc_costs(edited_df)
+            
+                final_df = st.session_state[state_key]
+            
+                # --- Insert divider rows between tools for display ---
+                display_rows = []
+                for _, row in final_df.iterrows():
+                    row_dict = row.to_dict()
+                    display_rows.append(row_dict)
+            
+                    # Add a blank divider row
+                    blank_divider = {col: "" for col in final_df.columns}
+                    display_rows.append(blank_divider)
+            
+                display_df = pd.DataFrame(display_rows, columns=final_df.columns)
+            
+                # --- Display Calculated Costs with dividers ---
+                st.subheader(f"Calculated Costs - Package {selected_package}, Service {selected_service}")
+                st.dataframe(display_df, hide_index=True)
+            
+                # --- Section and Grand Totals ---
                 section_total = final_df["Total (MYR)"].sum()
                 section_totals[hole_size] = section_total
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
-                
-                # --- Grand Total ---
+            
                 if section_totals:
                     grand_total = sum(section_totals.values())
                     st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
+            
+                # --- Store for Excel download ---
+                all_calc_dfs_for_excel.append((hole_size, used_special_cases, df_tools, special_cases))
 
 
 # --- Excel Download ---
@@ -576,6 +578,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
