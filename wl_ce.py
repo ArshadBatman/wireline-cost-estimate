@@ -291,24 +291,30 @@ if uploaded_file:
             # --- Row-by-row display with dividers ---
             if not df_tools.empty:
                 display_rows = []
-                inserted_dividers = set()
+                
+                # --- Special cases with divider ---
                 for sc in used_special_cases:
-                    # Divider row
                     divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
                     divider["Specification 1"] = f"--- {sc} ---"
                     display_rows.append(divider)
-                    # All items for this special case
+                
                     for item in special_cases[sc]:
                         item_rows = df_tools[df_tools["Specification 1"] == item]
-                        display_rows.extend([row.to_frame().T for _, row in item_rows.iterrows()])
+                        if not item_rows.empty:
+                            display_rows.append(item_rows)  # include all rows
+                
+                # --- Non-special tools ---
+                non_special_mask = ~df_tools["Specification 1"].isin(sum(special_cases.values(), []))
+                non_special_df = df_tools[non_special_mask]
+                if not non_special_df.empty:
+                    display_rows.append(non_special_df)
+                
+                # --- Combine ---
+                if display_rows:
+                    display_df = pd.concat(display_rows, ignore_index=True)
+                else:
+                    display_df = df_tools.copy()
 
-                # Non-special tools
-                for item in df_tools["Specification 1"]:
-                    if item not in sum(special_cases.values(), []):
-                        item_rows = df_tools[df_tools["Specification 1"] == item]
-                        display_rows.extend([row.to_frame().T for _, row in item_rows.iterrows()])
-
-                display_df = pd.concat(display_rows, ignore_index=True)
 
                 def highlight_divider(row):
                     if str(row["Specification 1"]).startswith("---"):
@@ -589,6 +595,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
