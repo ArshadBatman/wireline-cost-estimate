@@ -364,57 +364,40 @@ if uploaded_file:
             
                 # Store and display editable data
                 st.subheader(f"Calculated Costs - Package {selected_package}, Service {selected_service}")
-            
+                
                 # Keep DataFrame persistent between reruns
                 if f"calc_state_{hole_size}" not in st.session_state:
                     st.session_state[f"calc_state_{hole_size}"] = recalc_costs(calc_df)
-
-                # Recalculate immediately after any edit
-                st.session_state[f"calc_state_{hole_size}"] = recalc_costs(edited_df)
                 
-                # --- Display updated totals ---
                 final_df = st.session_state[f"calc_state_{hole_size}"]
                 
-                # --- Sort and build display with dividers between tools ---
-                display_df = final_df.sort_values(by=["Source", "Ref Item"]).copy()
+                # --- Build display_df with dividers between tool groups ---
+                display_df = final_df.copy()
+                display_df = display_df.sort_values(by=["Source", "Ref Item"])
+                
                 divider_rows = []
-                current_tool = None
-                all_columns = display_df.columns.tolist()
+                for i, row in display_df.iterrows():
+                    divider_rows.append(row)
+                    # Add a blank divider row
+                    divider_rows.append({col: "" for col in display_df.columns})
                 
-                for _, row in display_df.iterrows():
-                    # Detect tool change using "Ref Item" as logical grouping
-                    if current_tool != row["Ref Item"]:
-                        if current_tool is not None:
-                            divider = {col: "" for col in all_columns}
-                            divider[all_columns[0]] = "────────────"
-                            divider_rows.append(divider)
-                        current_tool = row["Ref Item"]
+                display_df = pd.DataFrame(divider_rows, columns=display_df.columns)
                 
-                    divider_rows.append(row.to_dict())
-                
-                # Create final DataFrame for display
-                display_df = pd.DataFrame(divider_rows, columns=all_columns)
-                
-                # --- Display Calculated Costs with dividers ---
-                st.subheader("Calculated Costs (Editable)")
+                # --- Editable table ---
                 edited_df = st.data_editor(
                     display_df,
                     num_rows="dynamic",
                     key=f"calc_editor_{hole_size}",
                 )
                 
-                # --- Recalculate immediately after edit ---
-                recalc_df = edited_df.copy()
-                recalc_df = recalc_costs(recalc_df)
-                st.session_state[f"calc_state_{hole_size}"] = recalc_df
+                # --- Recalculate after edits ---
+                st.session_state[f"calc_state_{hole_size}"] = recalc_costs(edited_df)
                 
-                # --- Section and Grand Total updates ---
-                section_total = recalc_df["Total (MYR)"].sum()
+                # --- Totals ---
+                final_df = st.session_state[f"calc_state_{hole_size}"]
+                section_total = final_df["Total (MYR)"].sum()
                 section_totals[hole_size] = section_total
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
-                
-                # --- Store for Excel download ---
-                all_calc_dfs_for_excel.append((hole_size, used_special_cases, df_tools, special_cases))
                 
                 # --- Grand Total ---
                 if section_totals:
@@ -593,6 +576,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
