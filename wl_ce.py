@@ -378,8 +378,8 @@ if uploaded_file:
             section_totals[hole_size] = section_total
             st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
                 
-                # Store for Excel download
-                all_calc_dfs_for_excel.append((hole_size, used_special_cases, df_tools, special_cases))
+            # Store for Excel download
+            all_calc_dfs_for_excel.append((hole_size, used_special_cases, df_tools, special_cases))
 
     # --- Grand Total ---
     if section_totals:
@@ -558,6 +558,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
