@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 from io import BytesIO
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, PatternFill
@@ -383,18 +384,18 @@ if uploaded_file:
                 # --- Insert divider rows per tool for display ---
                 display_df = final_df.copy()
                 display_df = display_df.sort_values(by=["Source", "Ref Item"])
-                
+
                 divider_rows = []
                 for i, row in display_df.iterrows():
                     divider_rows.append(row)
                     divider_rows.append({
-                        "Source": "", "Ref Item": "", "Code": "", "Items": "", 
-                        "Daily Rate": "", "Monthly Rate": "", "Depth Charge (per ft)": "",
-                        "Flat Rate": "", "Survey Charge (per ft)": "", "Hourly Charge": "",
-                        "Quantity of Tools": "", "Total Days": "", "Total Months": "",
-                        "Total Depth (ft)": "", "Total Survey (ft)": "", "Total Hours": "",
-                        "Discount (%)": "", "Operating Charge (MYR)": "", 
-                        "Rental Charge (MYR)": "", "Total (MYR)": ""
+                        "Source": "", "Ref Item": "", "Code": "", "Items": "",
+                        "Daily Rate": 0, "Monthly Rate": 0, "Depth Charge (per ft)": 0,
+                        "Flat Rate": 0, "Survey Charge (per ft)": 0, "Hourly Charge": 0,
+                        "Quantity of Tools": 0, "Total Days": 0, "Total Months": 0,
+                        "Total Depth (ft)": 0, "Total Survey (ft)": 0, "Total Hours": 0,
+                        "Discount (%)": 0, "Operating Charge (MYR)": 0,
+                        "Rental Charge (MYR)": 0, "Total (MYR)": 0
                     })
                 
                 display_df = pd.DataFrame(divider_rows)
@@ -591,6 +592,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
