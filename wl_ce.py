@@ -324,65 +324,103 @@ if uploaded_file:
                 st.dataframe(display_df.style.apply(highlight_divider, axis=1))
 
             # --- Calculation ---
+            # --- Calculation with dividers ---
             if not df_tools.empty:
-                # Initialize calculation DataFrame
-                calc_df = pd.DataFrame()
-                calc_df["Source"] = df_tools["Source"]
-                calc_df["Ref Item"] = df_tools["Reference"]
-                calc_df["Code"] = df_tools["Specification 1"].astype(str).str.strip()
-                calc_df["Items"] = df_tools["Specification 2"]
-                calc_df["Daily Rate"] = pd.to_numeric(df_tools["Daily Rate"], errors="coerce").fillna(0)
-                calc_df["Monthly Rate"] = pd.to_numeric(df_tools["Monthly Rate"], errors="coerce").fillna(0)
-                calc_df["Depth Charge (per ft)"] = pd.to_numeric(df_tools["Depth Charge (per ft)"], errors="coerce").fillna(0)
-                calc_df["Flat Rate"] = pd.to_numeric(df_tools["Flat Charge"], errors="coerce").fillna(0)
-                calc_df["Survey Charge (per ft)"] = 0
-                calc_df["Hourly Charge"] = 0
-                calc_df["Quantity of Tools"] = quantity_tools
-                calc_df["Total Days"] = total_days
-                calc_df["Total Months"] = total_months
-                calc_df["Total Depth (ft)"] = total_depth
-                calc_df["Total Survey (ft)"] = total_survey
-                calc_df["Total Hours"] = total_hours
-                calc_df["Discount (%)"] = discount * 100
+                # Build calc_df from display_df to preserve dividers
+                calc_rows = []
+                for _, row in display_df.iterrows():
+                    new_row = {}
+                    if str(row["Specification 1"]).startswith("---"):
+                        # Divider row: keep text, zero all numeric columns
+                        new_row = {
+                            "Source": "",
+                            "Ref Item": "",
+                            "Code": row["Specification 1"],
+                            "Items": "",
+                            "Daily Rate": 0,
+                            "Monthly Rate": 0,
+                            "Depth Charge (per ft)": 0,
+                            "Flat Rate": 0,
+                            "Survey Charge (per ft)": 0,
+                            "Hourly Charge": 0,
+                            "Quantity of Tools": quantity_tools,
+                            "Total Days": total_days,
+                            "Total Months": total_months,
+                            "Total Depth (ft)": total_depth,
+                            "Total Survey (ft)": total_survey,
+                            "Total Hours": total_hours,
+                            "Discount (%)": discount*100,
+                            "Rental Charge (MYR)": 0,
+                            "Operating Charge (MYR)": 0,
+                            "Total (MYR)": 0
+                        }
+                    else:
+                        new_row = {
+                            "Source": row["Source"],
+                            "Ref Item": row["Reference"],
+                            "Code": row["Specification 1"],
+                            "Items": row["Specification 2"],
+                            "Daily Rate": row.get("Daily Rate",0),
+                            "Monthly Rate": row.get("Monthly Rate",0),
+                            "Depth Charge (per ft)": row.get("Depth Charge (per ft)",0),
+                            "Flat Rate": row.get("Flat Charge",0),
+                            "Survey Charge (per ft)": 0,
+                            "Hourly Charge": 0,
+                            "Quantity of Tools": quantity_tools,
+                            "Total Days": total_days,
+                            "Total Months": total_months,
+                            "Total Depth (ft)": total_depth,
+                            "Total Survey (ft)": total_survey,
+                            "Total Hours": total_hours,
+                            "Discount (%)": discount*100,
+                            "Rental Charge (MYR)": 0,
+                            "Operating Charge (MYR)": 0,
+                            "Total (MYR)": 0
+                        }
+                    calc_rows.append(new_row)
             
-                # Define calculation function
+                calc_df = pd.DataFrame(calc_rows)
+            
+                # --- Calculation function ---
                 def recalc_costs(df):
                     df = df.copy()
-                    disc_fraction = df["Discount (%)"] / 100
-                    df["Operating Charge (MYR)"] = (
-                        (df["Depth Charge (per ft)"] * df["Total Depth (ft)"]) +
-                        (df["Survey Charge (per ft)"] * df["Total Survey (ft)"]) +
-                        (df["Flat Rate"]) +
-                        (df["Hourly Charge"] * df["Total Hours"])
-                    ) * (1 - disc_fraction)
-                    df["Rental Charge (MYR)"] = (
-                        df["Quantity of Tools"] *
-                        ((df["Daily Rate"] * df["Total Days"]) + (df["Monthly Rate"] * df["Total Months"]))
-                    ) * (1 - disc_fraction)
-                    df["Total (MYR)"] = df["Operating Charge (MYR)"] + df["Rental Charge (MYR)"]
+                    for idx, row in df.iterrows():
+                        if str(row["Code"]).startswith("---"):
+                            # divider row: skip calculation
+                            continue
+                        disc_fraction = row["Discount (%)"] / 100
+                        operating = (
+                            row["Depth Charge (per ft)"] * row["Total Depth (ft)"] +
+                            row["Survey Charge (per ft)"] * row["Total Survey (ft)"] +
+                            row["Flat Rate"] +
+                            row["Hourly Charge"] * row["Total Hours"]
+                        ) * (1 - disc_fraction)
+                        rental = (
+                            row["Quantity of Tools"] * 
+                            (row["Daily Rate"] * row["Total Days"] + row["Monthly Rate"] * row["Total Months"])
+                        ) * (1 - disc_fraction)
+                        df.at[idx, "Operating Charge (MYR)"] = operating
+                        df.at[idx, "Rental Charge (MYR)"] = rental
+                        df.at[idx, "Total (MYR)"] = operating + rental
                     return df
             
-                # Store and display editable data
                 st.subheader(f"Calculated Costs - Package {selected_package}, Service {selected_service}")
-            
-                # Keep DataFrame persistent between reruns
                 if f"calc_state_{hole_size}" not in st.session_state:
                     st.session_state[f"calc_state_{hole_size}"] = recalc_costs(calc_df)
             
                 edited_df = st.data_editor(
                     st.session_state[f"calc_state_{hole_size}"],
                     num_rows="dynamic",
-                    key=f"calc_editor_{hole_size}",
+                    key=f"calc_editor_{hole_size}"
                 )
-
-                # Recalculate immediately after any edit
+            
                 st.session_state[f"calc_state_{hole_size}"] = recalc_costs(edited_df)
-                
-                # Display updated totals
-                final_df = st.session_state[f"calc_state_{hole_size}"]
-                section_total = final_df["Total (MYR)"].sum()
+            
+                # Section total
+                section_total = st.session_state[f"calc_state_{hole_size}"]["Total (MYR)"].sum()
                 section_totals[hole_size] = section_total
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
+
             
                 # Store for Excel download
                 all_calc_dfs_for_excel.append((hole_size, used_special_cases, df_tools, special_cases))
@@ -558,6 +596,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
