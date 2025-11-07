@@ -368,17 +368,10 @@ if uploaded_file:
                 # Keep DataFrame persistent between reruns
                 if f"calc_state_{hole_size}" not in st.session_state:
                     st.session_state[f"calc_state_{hole_size}"] = recalc_costs(calc_df)
-            
-                edited_df = st.data_editor(
-                    st.session_state[f"calc_state_{hole_size}"],
-                    num_rows="dynamic",
-                    key=f"calc_editor_{hole_size}",
-                )
 
                 # Recalculate immediately after any edit
                 st.session_state[f"calc_state_{hole_size}"] = recalc_costs(edited_df)
                 
-                # --- Display updated totals ---
                 # --- Display updated totals ---
                 final_df = st.session_state[f"calc_state_{hole_size}"]
                 
@@ -600,6 +593,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
