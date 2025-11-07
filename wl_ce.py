@@ -410,7 +410,6 @@ if uploaded_file:
                 num_rows="dynamic",
                 key=f"calc_editor_{hole_size}",
                 hide_index=True,
-                styling_func=highlight_divider_calc
             )
             
             # Recalculate after edits
@@ -591,6 +590,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
