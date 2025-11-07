@@ -324,150 +324,77 @@ if uploaded_file:
                 st.dataframe(display_df.style.apply(highlight_divider, axis=1))
 
             # --- Calculation ---
-            # --- Calculation with Divider Rows ---
+            # --- Calculated Costs Table (Editable) ---
             if not df_tools.empty:
-                calc_rows = []
-            
-                # Build rows including dividers
+                # Build display/calc table with dividers exactly as in Selected Data
+                display_rows = []
                 for sc in used_special_cases:
                     # Divider row
-                    divider_row = {
-                        "Source": "",
-                        "Ref Item": "",
-                        "Code": f"--- {sc} ---",
-                        "Items": "",
-                        "Daily Rate": 0.0,
-                        "Monthly Rate": 0.0,
-                        "Depth Charge (per ft)": 0.0,
-                        "Flat Rate": 0.0,
-                        "Survey Charge (per ft)": 0.0,
-                        "Hourly Charge": 0.0,
-                        "Quantity of Tools": 0.0,
-                        "Total Days": 0.0,
-                        "Total Months": 0.0,
-                        "Total Depth (ft)": 0.0,
-                        "Total Survey (ft)": 0.0,
-                        "Total Hours": 0.0,
-                        "Discount (%)": discount * 100,
-                        "Operating Charge (MYR)": 0.0,
-                        "Rental Charge (MYR)": 0.0,
-                        "Total (MYR)": 0.0,
-                        "is_divider": True
-                    }
-                    calc_rows.append(divider_row)
+                    divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
+                    divider["Specification 1"] = f"--- {sc} ---"
+                    display_rows.append(divider)
             
-                    # Add all items for this special case
+                    # All items for this special case
                     for item in special_cases[sc]:
                         item_rows = df_tools[df_tools["Specification 1"] == item]
-                        for _, row in item_rows.iterrows():
-                            calc_rows.append({
-                                "Source": row.get("Source", ""),
-                                "Ref Item": row.get("Reference", ""),
-                                "Code": row.get("Specification 1", ""),
-                                "Items": row.get("Specification 2", ""),
-                                "Daily Rate": float(row.get("Daily Rate", 0.0)),
-                                "Monthly Rate": float(row.get("Monthly Rate", 0.0)),
-                                "Depth Charge (per ft)": float(row.get("Depth Charge (per ft)", 0.0)),
-                                "Flat Rate": float(row.get("Flat Charge", 0.0)),
-                                "Survey Charge (per ft)": float(row.get("Survey Charge (per ft)", 0.0)),
-                                "Hourly Charge": float(row.get("Hourly Charge", 0.0)),
-                                "Quantity of Tools": float(quantity_tools),
-                                "Total Days": float(total_days),
-                                "Total Months": float(total_months),
-                                "Total Depth (ft)": float(total_depth),
-                                "Total Survey (ft)": float(total_survey),
-                                "Total Hours": float(total_hours),
-                                "Discount (%)": discount * 100,
-                                "Operating Charge (MYR)": 0.0,
-                                "Rental Charge (MYR)": 0.0,
-                                "Total (MYR)": 0.0,
-                                "is_divider": False
-                            })
+                        display_rows.extend([row.to_frame().T for _, row in item_rows.iterrows()])
             
-                # Add non-special tools
-                non_special_items = [i for i in df_tools["Specification 1"] if i not in sum(special_cases.values(), [])]
-                for item in non_special_items:
-                    item_rows = df_tools[df_tools["Specification 1"] == item]
-                    for _, row in item_rows.iterrows():
-                        calc_rows.append({
-                            "Source": row.get("Source", ""),
-                            "Ref Item": row.get("Reference", ""),
-                            "Code": row.get("Specification 1", ""),
-                            "Items": row.get("Specification 2", ""),
-                            "Daily Rate": float(row.get("Daily Rate", 0.0)),
-                            "Monthly Rate": float(row.get("Monthly Rate", 0.0)),
-                            "Depth Charge (per ft)": float(row.get("Depth Charge (per ft)", 0.0)),
-                            "Flat Rate": float(row.get("Flat Charge", 0.0)),
-                            "Survey Charge (per ft)": float(row.get("Survey Charge (per ft)", 0.0)),
-                            "Hourly Charge": float(row.get("Hourly Charge", 0.0)),
-                            "Quantity of Tools": float(quantity_tools),
-                            "Total Days": float(total_days),
-                            "Total Months": float(total_months),
-                            "Total Depth (ft)": float(total_depth),
-                            "Total Survey (ft)": float(total_survey),
-                            "Total Hours": float(total_hours),
-                            "Discount (%)": discount * 100,
-                            "Operating Charge (MYR)": 0.0,
-                            "Rental Charge (MYR)": 0.0,
-                            "Total (MYR)": 0.0,
-                            "is_divider": False
-                        })
+                # Non-special items
+                for item in df_tools["Specification 1"]:
+                    if item not in sum(special_cases.values(), []):
+                        item_rows = df_tools[df_tools["Specification 1"] == item]
+                        display_rows.extend([row.to_frame().T for _, row in item_rows.iterrows()])
             
-                calc_df = pd.DataFrame(calc_rows)
+                calc_df = pd.concat(display_rows, ignore_index=True)
             
-                # --- Recalculation function ---
+                # Ensure calculation columns exist
+                for col in ["Operating Charge (MYR)", "Rental Charge (MYR)", "Total (MYR)"]:
+                    if col not in calc_df.columns:
+                        calc_df[col] = 0.0
+            
+                # Function to recalc costs
                 def recalc_costs(df):
                     df = df.copy()
-                    if "is_divider" not in df.columns:
-                        df["is_divider"] = False
-                
-                    if df.empty:
-                        return df
-                
-                    non_div = ~df["is_divider"]
-                    disc_fraction = df.loc[non_div, "Discount (%)"] / 100
-                
-                    df.loc[non_div, "Operating Charge (MYR)"] = (
-                        (df.loc[non_div, "Depth Charge (per ft)"] * df.loc[non_div, "Total Depth (ft)"]) +
-                        (df.loc[non_div, "Survey Charge (per ft)"] * df.loc[non_div, "Total Survey (ft)"]) +
-                        df.loc[non_div, "Flat Rate"] +
-                        (df.loc[non_div, "Hourly Charge"] * df.loc[non_div, "Total Hours"])
-                    ) * (1 - disc_fraction)
-                
-                    df.loc[non_div, "Rental Charge (MYR)"] = (
-                        df.loc[non_div, "Quantity of Tools"] *
-                        ((df.loc[non_div, "Daily Rate"] * df.loc[non_div, "Total Days"]) +
-                         (df.loc[non_div, "Monthly Rate"] * df.loc[non_div, "Total Months"]))
-                    ) * (1 - disc_fraction)
-                
-                    df.loc[non_div, "Total (MYR)"] = df.loc[non_div, "Operating Charge (MYR)"] + df.loc[non_div, "Rental Charge (MYR)"]
-                
-                    # Zero out divider rows
-                    df.loc[df["is_divider"], ["Operating Charge (MYR)", "Rental Charge (MYR)", "Total (MYR)"]] = 0
-                
+                    for i, row in df.iterrows():
+                        if str(row["Specification 1"]).startswith("---"):
+                            # Divider row, skip calculations
+                            continue
+                        disc = row.get("Discount (%)", 0) / 100
+                        op_charge = (
+                            row.get("Depth Charge (per ft)", 0) * row.get("Total Depth (ft)", 0) +
+                            row.get("Survey Charge (per ft)", 0) * row.get("Total Survey (ft)", 0) +
+                            row.get("Flat Charge", 0) +
+                            row.get("Hourly Charge", 0) * row.get("Total Hours", 0)
+                        ) * (1 - disc)
+                        rent_charge = (
+                            row.get("Quantity of Tools", 0) *
+                            (row.get("Daily Rate", 0) * row.get("Total Days", 0) +
+                             row.get("Monthly Rate", 0) * row.get("Total Months", 0))
+                        ) * (1 - disc)
+                        df.at[i, "Operating Charge (MYR)"] = op_charge
+                        df.at[i, "Rental Charge (MYR)"] = rent_charge
+                        df.at[i, "Total (MYR)"] = op_charge + rent_charge
                     return df
-
-            
-                # --- Display editable table ---
-                st.subheader(f"Calculated Costs - Package {selected_package}, Service {selected_service}")
             
                 # Initialize session state
                 if f"calc_state_{hole_size}" not in st.session_state:
                     st.session_state[f"calc_state_{hole_size}"] = recalc_costs(calc_df)
             
                 # Editable table
+                st.subheader(f"Calculated Costs - Package {selected_package}, Service {selected_service}")
                 edited_df = st.data_editor(
                     st.session_state[f"calc_state_{hole_size}"],
                     num_rows="dynamic",
                     key=f"calc_editor_{hole_size}"
                 )
             
-                # Recalculate after edit
+                # Recalculate after edits
                 st.session_state[f"calc_state_{hole_size}"] = recalc_costs(edited_df)
             
                 # Section total
                 section_total = st.session_state[f"calc_state_{hole_size}"]["Total (MYR)"].sum()
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
+
             
                         
 
@@ -647,6 +574,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
