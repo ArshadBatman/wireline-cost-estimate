@@ -379,75 +379,55 @@ if uploaded_file:
                 st.session_state[f"calc_state_{hole_size}"] = recalc_costs(edited_df)
                 
                 # --- Display updated totals ---
+                # --- Display updated totals ---
                 final_df = st.session_state[f"calc_state_{hole_size}"]
                 
-                # --- Insert divider rows per tool for display ---
-                display_df = final_df.copy()
-                display_df = display_df.sort_values(by=["Source", "Ref Item"])
-
-                divider_rows = []
-                for i, row in display_df.iterrows():
-                    divider_rows.append(row)
-                    divider_rows.append({
-                        "Source": "", "Ref Item": "", "Code": "", "Items": "",
-                        "Daily Rate": 0, "Monthly Rate": 0, "Depth Charge (per ft)": 0,
-                        "Flat Rate": 0, "Survey Charge (per ft)": 0, "Hourly Charge": 0,
-                        "Quantity of Tools": 0, "Total Days": 0, "Total Months": 0,
-                        "Total Depth (ft)": 0, "Total Survey (ft)": 0, "Total Hours": 0,
-                        "Discount (%)": 0, "Operating Charge (MYR)": 0,
-                        "Rental Charge (MYR)": 0, "Total (MYR)": 0
-                    })
-                
-                
-                # --- Build display_df with dividers between tool groups ---
+                # --- Sort and build display with dividers between tools ---
+                display_df = final_df.sort_values(by=["Source", "Ref Item"]).copy()
                 divider_rows = []
                 current_tool = None
+                all_columns = display_df.columns.tolist()
                 
-                # Get all columns to ensure divider rows match structure
-                all_columns = calculated_costs.columns.tolist()
-                
-                for _, row in calculated_costs.iterrows():
-                    # Insert divider when tool changes
-                    if current_tool != row["Tool"]:
+                for _, row in display_df.iterrows():
+                    # Detect tool change using "Ref Item" as logical grouping
+                    if current_tool != row["Ref Item"]:
                         if current_tool is not None:
-                            # Add a full-width divider row matching all columns
                             divider = {col: "" for col in all_columns}
                             divider[all_columns[0]] = "────────────"
                             divider_rows.append(divider)
-                        current_tool = row["Tool"]
+                        current_tool = row["Ref Item"]
                 
                     divider_rows.append(row.to_dict())
                 
+                # Create final DataFrame for display
                 display_df = pd.DataFrame(divider_rows, columns=all_columns)
                 
                 # --- Display Calculated Costs with dividers ---
-                st.subheader("Calculated Costs")
-                st.dataframe(display_df, hide_index=True)
-
-
-
-                
-                
-                # --- Pass to data_editor ---
+                st.subheader("Calculated Costs (Editable)")
                 edited_df = st.data_editor(
                     display_df,
                     num_rows="dynamic",
                     key=f"calc_editor_{hole_size}",
                 )
-
-
                 
-                section_total = final_df["Total (MYR)"].sum()
+                # --- Recalculate immediately after edit ---
+                recalc_df = edited_df.copy()
+                recalc_df = recalc_costs(recalc_df)
+                st.session_state[f"calc_state_{hole_size}"] = recalc_df
+                
+                # --- Section and Grand Total updates ---
+                section_total = recalc_df["Total (MYR)"].sum()
                 section_totals[hole_size] = section_total
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
                 
-                # Store for Excel download
+                # --- Store for Excel download ---
                 all_calc_dfs_for_excel.append((hole_size, used_special_cases, df_tools, special_cases))
-            
+                
                 # --- Grand Total ---
                 if section_totals:
                     grand_total = sum(section_totals.values())
                     st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
+
 
 # --- Excel Download ---
 if st.button("Download Cost Estimate Excel"):
@@ -620,6 +600,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
