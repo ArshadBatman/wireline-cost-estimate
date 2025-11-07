@@ -387,6 +387,12 @@ if uploaded_file:
                 # Store for Excel download
                 all_calc_dfs_for_excel.append((hole_size, used_special_cases, df_tools, special_cases))
 
+    # --- Grand Total ---
+    if section_totals:
+        grand_total = sum(section_totals.values())
+        st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
+
+
 # --- Excel Download ---
 if st.button("Download Cost Estimate Excel"):
     output = BytesIO()
@@ -558,6 +564,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
