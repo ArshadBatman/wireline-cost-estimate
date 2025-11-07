@@ -336,7 +336,6 @@ if uploaded_file:
                 calc_df["Survey Charge (per ft)"] = 0
                 calc_df["Hourly Charge"] = 0
                 calc_df["User Flat Charge"] = calc_df["Flat Rate"].apply(lambda x: 1 if x > 0 else 0)
-                calc_df = st.data_editor(calc_df, num_rows="dynamic", key=f"editor_{hole_size}")
                 calc_df["Quantity of Tools"] = quantity_tools
                 calc_df["Total Days"] = total_days
                 calc_df["Total Months"] = total_months
@@ -379,7 +378,14 @@ if uploaded_file:
                 if "Status" in cols:
                     cols = ["Status"] + [c for c in cols if c != "Status"]
                 st.subheader(f"Calculated Costs - Package {selected_package}, Service {selected_service}")
-                st.dataframe(calc_df[cols])
+                
+                editable_calc_df = st.data_editor(
+                    calc_df[cols],
+                    num_rows="dynamic",
+                    key=f"calc_editor_{hole_size}",
+                )
+                calc_df = editable_calc_df.copy()
+
                 section_total = calc_df["Total (MYR)"].sum()
                 section_totals[hole_size] = section_total
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
@@ -563,6 +569,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
