@@ -377,7 +377,7 @@ if uploaded_file:
                 # Auto-recalculate immediately after any edit
                 if not edited_df.equals(st.session_state[f"calc_state_{hole_size}"]):
                     st.session_state[f"calc_state_{hole_size}"] = recalc_costs(edited_df)
-                    st.experimental_rerun()
+                    st.rerun()
             
                 # Display updated totals
                 final_df = st.session_state[f"calc_state_{hole_size}"]
@@ -564,6 +564,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
