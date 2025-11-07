@@ -324,17 +324,18 @@ if uploaded_file:
                 st.dataframe(display_df.style.apply(highlight_divider, axis=1))
 
             # --- Calculation ---
+            # --- Calculation Table with Dividers ---
             if not df_tools.empty:
-                # Initialize calculation DataFrame
+                # Prepare rows including special case dividers
                 calc_rows = []
-                
-                # Insert dividers first for special cases
-                for sc in used_special_cases:
+            
+                # Add special case dividers first
+                for sc_name, sc_items in special_cases.items():
                     # Divider row
                     divider_row = {
                         "Source": "",
                         "Ref Item": "",
-                        "Code": f"--- {sc} ---",
+                        "Code": f"--- {sc_name} ---",  # Divider text
                         "Items": "",
                         "Daily Rate": 0,
                         "Monthly Rate": 0,
@@ -342,32 +343,32 @@ if uploaded_file:
                         "Flat Rate": 0,
                         "Survey Charge (per ft)": 0,
                         "Hourly Charge": 0,
-                        "Quantity of Tools": quantity_tools,
-                        "Total Days": total_days,
-                        "Total Months": total_months,
-                        "Total Depth (ft)": total_depth,
-                        "Total Survey (ft)": total_survey,
-                        "Total Hours": total_hours,
-                        "Discount (%)": discount*100,
+                        "Quantity of Tools": 0,
+                        "Total Days": 0,
+                        "Total Months": 0,
+                        "Total Depth (ft)": 0,
+                        "Total Survey (ft)": 0,
+                        "Total Hours": 0,
+                        "Discount (%)": 0,
                         "is_divider": True
                     }
                     calc_rows.append(divider_row)
-                    
-                    # Add tools under this special case
-                    for item in special_cases[sc]:
+            
+                    # Add items under this special case
+                    for item in sc_items:
                         item_rows = df_tools[df_tools["Specification 1"] == item]
-                        for _, item_row in item_rows.iterrows():
+                        for _, row in item_rows.iterrows():
                             calc_rows.append({
-                                "Source": item_row.get("Source",""),
-                                "Ref Item": item_row.get("Reference",""),
-                                "Code": item_row.get("Specification 1",""),
-                                "Items": item_row.get("Specification 2",""),
-                                "Daily Rate": pd.to_numeric(item_row.get("Daily Rate",0)),
-                                "Monthly Rate": pd.to_numeric(item_row.get("Monthly Rate",0)),
-                                "Depth Charge (per ft)": pd.to_numeric(item_row.get("Depth Charge (per ft)",0)),
-                                "Flat Rate": pd.to_numeric(item_row.get("Flat Charge",0)),
-                                "Survey Charge (per ft)": 0,
-                                "Hourly Charge": 0,
+                                "Source": row.get("Source",""),
+                                "Ref Item": row.get("Reference",""),
+                                "Code": row.get("Specification 1",""),
+                                "Items": row.get("Specification 2",""),
+                                "Daily Rate": row.get("Daily Rate",0),
+                                "Monthly Rate": row.get("Monthly Rate",0),
+                                "Depth Charge (per ft)": row.get("Depth Charge (per ft)",0),
+                                "Flat Rate": row.get("Flat Charge",0),
+                                "Survey Charge (per ft)": row.get("Survey Charge (per ft)",0),
+                                "Hourly Charge": row.get("Hourly Charge",0),
                                 "Quantity of Tools": quantity_tools,
                                 "Total Days": total_days,
                                 "Total Months": total_months,
@@ -377,23 +378,23 @@ if uploaded_file:
                                 "Discount (%)": discount*100,
                                 "is_divider": False
                             })
-                
-                # Add non-special tools
+            
+                # Add non-special tools at the end
                 for item in df_tools["Specification 1"]:
                     if item not in sum(special_cases.values(), []):
                         item_rows = df_tools[df_tools["Specification 1"] == item]
-                        for _, item_row in item_rows.iterrows():
+                        for _, row in item_rows.iterrows():
                             calc_rows.append({
-                                "Source": item_row.get("Source",""),
-                                "Ref Item": item_row.get("Reference",""),
-                                "Code": item_row.get("Specification 1",""),
-                                "Items": item_row.get("Specification 2",""),
-                                "Daily Rate": pd.to_numeric(item_row.get("Daily Rate",0)),
-                                "Monthly Rate": pd.to_numeric(item_row.get("Monthly Rate",0)),
-                                "Depth Charge (per ft)": pd.to_numeric(item_row.get("Depth Charge (per ft)",0)),
-                                "Flat Rate": pd.to_numeric(item_row.get("Flat Charge",0)),
-                                "Survey Charge (per ft)": 0,
-                                "Hourly Charge": 0,
+                                "Source": row.get("Source",""),
+                                "Ref Item": row.get("Reference",""),
+                                "Code": row.get("Specification 1",""),
+                                "Items": row.get("Specification 2",""),
+                                "Daily Rate": row.get("Daily Rate",0),
+                                "Monthly Rate": row.get("Monthly Rate",0),
+                                "Depth Charge (per ft)": row.get("Depth Charge (per ft)",0),
+                                "Flat Rate": row.get("Flat Charge",0),
+                                "Survey Charge (per ft)": row.get("Survey Charge (per ft)",0),
+                                "Hourly Charge": row.get("Hourly Charge",0),
                                 "Quantity of Tools": quantity_tools,
                                 "Total Days": total_days,
                                 "Total Months": total_months,
@@ -403,49 +404,51 @@ if uploaded_file:
                                 "Discount (%)": discount*100,
                                 "is_divider": False
                             })
-                
+            
+                # Create DataFrame
                 calc_df = pd.DataFrame(calc_rows)
             
                 # --- Define calculation function ---
                 def recalc_costs(df):
                     df = df.copy()
-                    disc_fraction = df["Discount (%)"] / 100
-                    df["Operating Charge (MYR)"] = (
-                        (df["Depth Charge (per ft)"] * df["Total Depth (ft)"]) +
-                        (df["Survey Charge (per ft)"] * df["Total Survey (ft)"]) +
-                        (df["Flat Rate"]) +
-                        (df["Hourly Charge"] * df["Total Hours"])
+                    # Only calculate for non-divider rows
+                    non_div = ~df["is_divider"]
+                    disc_fraction = df.loc[non_div, "Discount (%)"] / 100
+                    df.loc[non_div, "Operating Charge (MYR)"] = (
+                        (df.loc[non_div, "Depth Charge (per ft)"] * df.loc[non_div, "Total Depth (ft)"]) +
+                        (df.loc[non_div, "Survey Charge (per ft)"] * df.loc[non_div, "Total Survey (ft)"]) +
+                        (df.loc[non_div, "Flat Rate"]) +
+                        (df.loc[non_div, "Hourly Charge"] * df.loc[non_div, "Total Hours"])
                     ) * (1 - disc_fraction)
-                    df["Rental Charge (MYR)"] = (
-                        df["Quantity of Tools"] *
-                        ((df["Daily Rate"] * df["Total Days"]) + (df["Monthly Rate"] * df["Total Months"]))
+            
+                    df.loc[non_div, "Rental Charge (MYR)"] = (
+                        df.loc[non_div, "Quantity of Tools"] *
+                        ((df.loc[non_div, "Daily Rate"] * df.loc[non_div, "Total Days"]) +
+                         (df.loc[non_div, "Monthly Rate"] * df.loc[non_div, "Total Months"]))
                     ) * (1 - disc_fraction)
-                    df["Total (MYR)"] = df["Operating Charge (MYR)"] + df["Rental Charge (MYR)"]
+            
+                    df.loc[non_div, "Total (MYR)"] = df.loc[non_div, "Operating Charge (MYR)"] + df.loc[non_div, "Rental Charge (MYR)"]
                     return df
             
-                # --- Display editable Calculated Cost table with dividers ---
-                st.subheader(f"Calculated Costs - Package {selected_package}, Service {selected_service}")
-            
+                # Initialize state
                 if f"calc_state_{hole_size}" not in st.session_state:
                     st.session_state[f"calc_state_{hole_size}"] = recalc_costs(calc_df)
             
-                # Style divider rows
-                def highlight_dividers(row):
-                    if row.get("is_divider", False):
-                        return ["background-color: red; color: white"] * len(row)
-                    return [""] * len(row)
-            
+                # --- Editable Data Table ---
+                st.subheader(f"Calculated Costs - Package {selected_package}, Service {selected_service}")
                 edited_df = st.data_editor(
-                    st.session_state[f"calc_state_{hole_size}"].style.apply(highlight_dividers, axis=1),
+                    st.session_state[f"calc_state_{hole_size}"],
                     num_rows="dynamic",
                     key=f"calc_editor_{hole_size}"
                 )
             
-                # Recalculate after edit
+                # Recalculate after edits
                 st.session_state[f"calc_state_{hole_size}"] = recalc_costs(edited_df)
             
-                # Display section total
-                section_total = st.session_state[f"calc_state_{hole_size}"]["Total (MYR)"].sum()
+                # Display totals
+                final_df = st.session_state[f"calc_state_{hole_size}"]
+                section_total = final_df.loc[~final_df["is_divider"], "Total (MYR)"].sum()
+                section_totals[hole_size] = section_total
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
 
 
@@ -624,6 +627,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
