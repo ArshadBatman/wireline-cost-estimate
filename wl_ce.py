@@ -328,37 +328,43 @@ if uploaded_file:
             if not df_tools.empty:
                 display_rows = []
             
-                for sc in used_special_cases:
-                    # Divider
-                    divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
-                    divider["Specification 1"] = f"--- {sc} ---"
-                    display_rows.append(divider)
+                # --- Add special-case dividers and their items ---
+                for sc, items in special_cases.items():
+                    if any(item in df_tools["Specification 1"].values for item in items):
+                        # Divider row
+                        divider = pd.DataFrame({col: "" for col in df_tools.columns}, index=[0])
+                        divider["Specification 1"] = f"--- {sc} ---"
+                        display_rows.append(divider)
             
-                    # Items present in df_tools
-                    for item in special_cases[sc]:
-                        item_rows = df_tools[df_tools["Specification 1"] == item]
-                        display_rows.extend([row.to_frame().T for _, row in item_rows.iterrows()])
+                        # Add each item under the special case
+                        for item in items:
+                            item_rows = df_tools[df_tools["Specification 1"] == item]
+                            if not item_rows.empty:
+                                display_rows.append(item_rows)
+                            else:
+                                # Add empty row if item not in df_tools
+                                empty_row = pd.DataFrame([{col: "" for col in df_tools.columns}])
+                                empty_row.at[0, "Specification 1"] = item
+                                display_rows.append(empty_row)
             
-                # Non-special items
-                for item in df_tools["Specification 1"]:
-                    if item not in sum(special_cases.values(), []):
-                        item_rows = df_tools[df_tools["Specification 1"] == item]
-                        display_rows.extend([row.to_frame().T for _, row in item_rows.iterrows()])
+                # --- Add non-special items ---
+                special_items_flat = sum(special_cases.values(), [])
+                non_special_items = df_tools[~df_tools["Specification 1"].isin(special_items_flat)]
+                if not non_special_items.empty:
+                    display_rows.append(non_special_items)
             
+                # Concatenate all rows
                 selected_df = pd.concat(display_rows, ignore_index=True)
             
+                # --- Highlight divider rows ---
                 def highlight_divider(row):
-                    if str(row["Specification 1"]).startswith("---"):
-                        return ["background-color: red; color: white"] * len(row)
-                    return [""] * len(row)
+                    return ["background-color: red; color: white"] * len(row) if str(row["Specification 1"]).startswith("---") else [""] * len(row)
             
                 st.subheader(f"Selected Data - Package {selected_package}, Service {selected_service}")
                 st.dataframe(selected_df.style.apply(highlight_divider, axis=1))
             
-            
             # --- Build Calculated Table (editable) ---
             if not df_tools.empty:
-                # Copy the selected_df structure
                 calc_df = selected_df.copy()
             
                 # Ensure calculation columns exist
@@ -366,13 +372,14 @@ if uploaded_file:
                     if col not in calc_df.columns:
                         calc_df[col] = 0.0
             
-                # Recalculation function
+                # --- Recalculation function ---
                 def recalc_costs(df):
                     df = df.copy()
                     for i, row in df.iterrows():
                         spec1 = str(row.get("Specification 1", ""))
                         if spec1.startswith("---"):
                             continue  # skip divider rows
+            
                         disc = row.get("Discount (%)", 0) / 100
                         op_charge = (
                             row.get("Depth Charge (per ft)", 0) * row.get("Total Depth (ft)", 0) +
@@ -380,35 +387,38 @@ if uploaded_file:
                             row.get("Flat Charge", 0) +
                             row.get("Hourly Charge", 0) * row.get("Total Hours", 0)
                         ) * (1 - disc)
+            
                         rent_charge = (
                             row.get("Quantity of Tools", 0) *
                             (row.get("Daily Rate", 0) * row.get("Total Days", 0) +
                              row.get("Monthly Rate", 0) * row.get("Total Months", 0))
                         ) * (1 - disc)
+            
                         df.at[i, "Operating Charge (MYR)"] = op_charge
                         df.at[i, "Rental Charge (MYR)"] = rent_charge
                         df.at[i, "Total (MYR)"] = op_charge + rent_charge
                     return df
             
-                # Initialize session state
-                if f"calc_state_{hole_size}" not in st.session_state:
-                    st.session_state[f"calc_state_{hole_size}"] = recalc_costs(calc_df)
+                # --- Initialize or update session state ---
+                session_key = f"calc_state_{hole_size}"
+                if session_key not in st.session_state:
+                    st.session_state[session_key] = recalc_costs(calc_df)
             
                 st.subheader(f"Calculated Costs - Package {selected_package}, Service {selected_service}")
                 edited_df = st.data_editor(
-                    st.session_state[f"calc_state_{hole_size}"],
+                    st.session_state[session_key],
                     num_rows="dynamic",
                     key=f"calc_editor_{hole_size}",
                     hide_index=True
                 )
             
                 # Recalculate after edit
-                st.session_state[f"calc_state_{hole_size}"] = recalc_costs(edited_df)
+                st.session_state[session_key] = recalc_costs(edited_df)
             
                 # Section total
-                section_total = st.session_state[f"calc_state_{hole_size}"]["Total (MYR)"].sum()
+                section_total = st.session_state[session_key]["Total (MYR)"].sum()
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
-            
+
 
 # --- Excel Download ---
 if st.button("Download Cost Estimate Excel"):
@@ -581,6 +591,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
