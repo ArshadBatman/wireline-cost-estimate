@@ -373,18 +373,16 @@ if uploaded_file:
                     num_rows="dynamic",
                     key=f"calc_editor_{hole_size}",
                 )
-            
-                # Auto-recalculate immediately after any edit
-                if not edited_df.equals(st.session_state[f"calc_state_{hole_size}"]):
-                    st.session_state[f"calc_state_{hole_size}"] = recalc_costs(edited_df)
-                    st.rerun()
-            
+
+                # Recalculate immediately after any edit
+                st.session_state[f"calc_state_{hole_size}"] = recalc_costs(edited_df)
+                
                 # Display updated totals
                 final_df = st.session_state[f"calc_state_{hole_size}"]
                 section_total = final_df["Total (MYR)"].sum()
                 section_totals[hole_size] = section_total
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
-            
+                
                 # Store for Excel download
                 all_calc_dfs_for_excel.append((hole_size, used_special_cases, df_tools, special_cases))
             
@@ -564,6 +562,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
