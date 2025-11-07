@@ -324,6 +324,7 @@ if uploaded_file:
 
             # --- Calculation ---
             if not df_tools.empty:
+                # Initialize calculation DataFrame
                 calc_df = pd.DataFrame()
                 calc_df["Source"] = df_tools["Source"]
                 calc_df["Ref Item"] = df_tools["Reference"]
@@ -335,7 +336,6 @@ if uploaded_file:
                 calc_df["Flat Rate"] = pd.to_numeric(df_tools["Flat Charge"], errors="coerce").fillna(0)
                 calc_df["Survey Charge (per ft)"] = 0
                 calc_df["Hourly Charge"] = 0
-                calc_df["User Flat Charge"] = calc_df["Flat Rate"].apply(lambda x: 1 if x > 0 else 0)
                 calc_df["Quantity of Tools"] = quantity_tools
                 calc_df["Total Days"] = total_days
                 calc_df["Total Months"] = total_months
@@ -343,60 +343,55 @@ if uploaded_file:
                 calc_df["Total Survey (ft)"] = total_survey
                 calc_df["Total Hours"] = total_hours
                 calc_df["Discount (%)"] = discount * 100
-                calc_df["Operating Charge (MYR)"] = (
-                    (calc_df["Depth Charge (per ft)"] * total_depth) +
-                    (calc_df["Survey Charge (per ft)"] * total_survey) +
-                    (calc_df["Flat Rate"] * calc_df["User Flat Charge"]) +
-                    (calc_df["Hourly Charge"] * total_hours)
-                ) * (1 - discount)
-                calc_df["Rental Charge (MYR)"] = (
-                    calc_df["Quantity of Tools"] *
-                    ((calc_df["Daily Rate"] * total_days) + (calc_df["Monthly Rate"] * total_months))
-                ) * (1 - discount)
-
-                # Unique-tool duplication logic
-                calc_df["Is Duplicate Unique Tool"] = False
-                calc_df["Status"] = "Charged"
-                tracker = set(st.session_state.get("unique_tracker", set()))
-                for ut in unique_tools:
-                    mask = calc_df["Code"] == ut
-                    if mask.any():
-                        if ut in tracker:
-                            calc_df.loc[mask, "Is Duplicate Unique Tool"] = True
-                            calc_df.loc[mask, ["Operating Charge (MYR)", "Rental Charge (MYR)"]] = 0
-                            calc_df.loc[mask, "Status"] = "Duplicate — Not charged"
-                        else:
-                            idxs = calc_df[mask].index.tolist()
-                            for i in idxs[1:]:
-                                calc_df.loc[i, "Is Duplicate Unique Tool"] = True
-                                calc_df.loc[i, ["Operating Charge (MYR)", "Rental Charge (MYR)"]] = 0
-                                calc_df.loc[i, "Status"] = "Duplicate — Not charged"
-                            tracker.add(ut)
-                st.session_state["unique_tracker"] = tracker
-                calc_df["Total (MYR)"] = calc_df["Operating Charge (MYR)"] + calc_df["Rental Charge (MYR)"]
-                cols = list(calc_df.columns)
-                if "Status" in cols:
-                    cols = ["Status"] + [c for c in cols if c != "Status"]
+            
+                # Define calculation function
+                def recalc_costs(df):
+                    df = df.copy()
+                    disc_fraction = df["Discount (%)"] / 100
+                    df["Operating Charge (MYR)"] = (
+                        (df["Depth Charge (per ft)"] * df["Total Depth (ft)"]) +
+                        (df["Survey Charge (per ft)"] * df["Total Survey (ft)"]) +
+                        (df["Flat Rate"]) +
+                        (df["Hourly Charge"] * df["Total Hours"])
+                    ) * (1 - disc_fraction)
+                    df["Rental Charge (MYR)"] = (
+                        df["Quantity of Tools"] *
+                        ((df["Daily Rate"] * df["Total Days"]) + (df["Monthly Rate"] * df["Total Months"]))
+                    ) * (1 - disc_fraction)
+                    df["Total (MYR)"] = df["Operating Charge (MYR)"] + df["Rental Charge (MYR)"]
+                    return df
+            
+                # Store and display editable data
                 st.subheader(f"Calculated Costs - Package {selected_package}, Service {selected_service}")
-                
-                editable_calc_df = st.data_editor(
-                    calc_df[cols],
+            
+                # Keep DataFrame persistent between reruns
+                if f"calc_state_{hole_size}" not in st.session_state:
+                    st.session_state[f"calc_state_{hole_size}"] = recalc_costs(calc_df)
+            
+                edited_df = st.data_editor(
+                    st.session_state[f"calc_state_{hole_size}"],
                     num_rows="dynamic",
                     key=f"calc_editor_{hole_size}",
                 )
-                calc_df = editable_calc_df.copy()
-
-                section_total = calc_df["Total (MYR)"].sum()
+            
+                # Auto-recalculate immediately after any edit
+                if not edited_df.equals(st.session_state[f"calc_state_{hole_size}"]):
+                    st.session_state[f"calc_state_{hole_size}"] = recalc_costs(edited_df)
+                    st.experimental_rerun()
+            
+                # Display updated totals
+                final_df = st.session_state[f"calc_state_{hole_size}"]
+                section_total = final_df["Total (MYR)"].sum()
                 section_totals[hole_size] = section_total
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
-
+            
                 # Store for Excel download
                 all_calc_dfs_for_excel.append((hole_size, used_special_cases, df_tools, special_cases))
-
-    # --- Grand Total ---
-    if section_totals:
-        grand_total = sum(section_totals.values())
-        st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
+            
+                # --- Grand Total ---
+                if section_totals:
+                    grand_total = sum(section_totals.values())
+                    st.success(f"🏆 Grand Total Price (MYR): {grand_total:,.2f}")
 
 # --- Excel Download ---
 if st.button("Download Cost Estimate Excel"):
@@ -569,6 +564,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
