@@ -356,7 +356,9 @@ if uploaded_file:
                 def recalc_costs(df):
                     df = df.copy()
                     for i, row in df.iterrows():
-                        if str(row["Specification 1"]).startswith("---"):
+                        # Use .get() to avoid KeyError
+                        spec1 = str(row.get("Specification 1", ""))
+                        if spec1.startswith("---"):
                             # Divider row, skip calculations
                             continue
                         disc = row.get("Discount (%)", 0) / 100
@@ -375,6 +377,7 @@ if uploaded_file:
                         df.at[i, "Rental Charge (MYR)"] = rent_charge
                         df.at[i, "Total (MYR)"] = op_charge + rent_charge
                     return df
+
             
                 # Initialize session state
                 if f"calc_state_{hole_size}" not in st.session_state:
@@ -566,6 +569,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
