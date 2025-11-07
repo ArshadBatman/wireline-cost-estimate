@@ -417,23 +417,36 @@ if uploaded_file:
             
                 # --- Recalculation function ---
                 def recalc_costs(df):
-                    df = df.copy()
-                    # Only recalc non-divider rows
-                    non_div = ~df["is_divider"]
-                    disc_fraction = df.loc[non_div, "Discount (%)"] / 100
-                    df.loc[non_div, "Operating Charge (MYR)"] = (
-                        (df.loc[non_div, "Depth Charge (per ft)"] * df.loc[non_div, "Total Depth (ft)"]) +
-                        (df.loc[non_div, "Survey Charge (per ft)"] * df.loc[non_div, "Total Survey (ft)"]) +
-                        df.loc[non_div, "Flat Rate"] +
-                        (df.loc[non_div, "Hourly Charge"] * df.loc[non_div, "Total Hours"])
-                    ) * (1 - disc_fraction)
-                    df.loc[non_div, "Rental Charge (MYR)"] = (
-                        df.loc[non_div, "Quantity of Tools"] *
-                        ((df.loc[non_div, "Daily Rate"] * df.loc[non_div, "Total Days"]) +
-                         (df.loc[non_div, "Monthly Rate"] * df.loc[non_div, "Total Months"]))
-                    ) * (1 - disc_fraction)
-                    df.loc[non_div, "Total (MYR)"] = df.loc[non_div, "Operating Charge (MYR)"] + df.loc[non_div, "Rental Charge (MYR)"]
+                df = df.copy()
+                if "is_divider" not in df.columns:
+                    df["is_divider"] = False
+            
+                if df.empty:
                     return df
+            
+                non_div = ~df["is_divider"]
+                disc_fraction = df.loc[non_div, "Discount (%)"] / 100
+            
+                df.loc[non_div, "Operating Charge (MYR)"] = (
+                    (df.loc[non_div, "Depth Charge (per ft)"] * df.loc[non_div, "Total Depth (ft)"]) +
+                    (df.loc[non_div, "Survey Charge (per ft)"] * df.loc[non_div, "Total Survey (ft)"]) +
+                    df.loc[non_div, "Flat Rate"] +
+                    (df.loc[non_div, "Hourly Charge"] * df.loc[non_div, "Total Hours"])
+                ) * (1 - disc_fraction)
+            
+                df.loc[non_div, "Rental Charge (MYR)"] = (
+                    df.loc[non_div, "Quantity of Tools"] *
+                    ((df.loc[non_div, "Daily Rate"] * df.loc[non_div, "Total Days"]) +
+                     (df.loc[non_div, "Monthly Rate"] * df.loc[non_div, "Total Months"]))
+                ) * (1 - disc_fraction)
+            
+                df.loc[non_div, "Total (MYR)"] = df.loc[non_div, "Operating Charge (MYR)"] + df.loc[non_div, "Rental Charge (MYR)"]
+            
+                # Zero out divider rows
+                df.loc[df["is_divider"], ["Operating Charge (MYR)", "Rental Charge (MYR)", "Total (MYR)"]] = 0
+            
+                return df
+
             
                 # --- Display editable table ---
                 st.subheader(f"Calculated Costs - Package {selected_package}, Service {selected_service}")
@@ -634,6 +647,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
