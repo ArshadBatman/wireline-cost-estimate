@@ -398,7 +398,35 @@ if uploaded_file:
                         "Rental Charge (MYR)": 0, "Total (MYR)": 0
                     })
                 
-                display_df = pd.DataFrame(divider_rows)
+                
+                # --- Build display_df with dividers between tool groups ---
+                divider_rows = []
+                current_tool = None
+                
+                # Get all columns to ensure divider rows match structure
+                all_columns = calculated_costs.columns.tolist()
+                
+                for _, row in calculated_costs.iterrows():
+                    # Insert divider when tool changes
+                    if current_tool != row["Tool"]:
+                        if current_tool is not None:
+                            # Add a full-width divider row matching all columns
+                            divider = {col: "" for col in all_columns}
+                            divider[all_columns[0]] = "────────────"
+                            divider_rows.append(divider)
+                        current_tool = row["Tool"]
+                
+                    divider_rows.append(row.to_dict())
+                
+                display_df = pd.DataFrame(divider_rows, columns=all_columns)
+                
+                # --- Display Calculated Costs with dividers ---
+                st.subheader("Calculated Costs")
+                st.dataframe(display_df, hide_index=True)
+
+
+
+                
                 
                 # --- Pass to data_editor ---
                 edited_df = st.data_editor(
@@ -592,6 +620,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
