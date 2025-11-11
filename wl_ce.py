@@ -418,9 +418,10 @@ if uploaded_file:
                 
                 # Apply recalculation to all valid rows
                 working_calc_df = recalc_costs(working_calc_df)
-                
-                # Remove duplicates (keep first occurrence)
-                working_calc_df = working_calc_df.drop_duplicates(subset=["Specification 1"], keep="first")
+
+                # Keep all rows, including repeated tools (no deduplication)
+                working_calc_df = working_calc_df.reset_index(drop=True)
+
                 
                 # Display in editable table
                 edited_df = st.data_editor(
@@ -621,6 +622,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
