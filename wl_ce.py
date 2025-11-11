@@ -430,22 +430,11 @@ if uploaded_file:
                 working_calc_df = recalc_costs(working_calc_df)
                 working_calc_df = working_calc_df.reset_index(drop=True)
                 
-                # --- Style function for divider rows ---
-                def style_dividers(row):
-                    spec = str(row["Specification 1"])
-                    if spec.startswith("---"):
-                        # Blue background (#4472C4) with white text
-                        return {col: "background-color: #4472C4; color: white;" for col in row.index}
-                    else:
-                        # No style for normal rows
-                        return {col: "" for col in row.index}
-                
                 # --- Display editable table with styling ---
                 edited_df = st.data_editor(
                     working_calc_df,
                     num_rows="dynamic",
                     key=f"calc_editor_{safe_hole_size}",
-                    cell_style=style_dividers  # <-- Apply the row style
                 )
                 
                 # Recalculate totals after user edits
@@ -639,6 +628,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
