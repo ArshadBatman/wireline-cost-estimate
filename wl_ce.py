@@ -375,7 +375,7 @@ if uploaded_file:
                         operating_charge = (
                             (row["Depth Charge (per ft)"] * row["Total Depth (ft)"]) +
                             (row["Survey Charge (per ft)"] * row["Total Survey (ft)"]) +
-                            (row["Flat Charge"]* total_flat]) +
+                            (row["Flat Charge"]* total_flat) +
                             (row["Hourly Charge"] * row["Total Hours"])
                         ) * (1 - disc_fraction)
                 
@@ -623,6 +623,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
