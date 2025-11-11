@@ -392,31 +392,57 @@ if uploaded_file:
     
                 # Sanitize hole size for keys
                 safe_hole_size = hole_size.replace('"', '_').replace('.', '_')
-                
-                # --- Editable Calculated Costs table ---
+
+                # --- Editable Calculated Costs Table (fixed to include all tools) ---
                 st.subheader("Calculated Costs Table")
+                
                 calc_key = f"calc_state_{safe_hole_size}"
                 
+                # Initialize calculated table for this hole section if not already present
                 if calc_key not in st.session_state:
                     st.session_state[calc_key] = recalc_costs(calc_df)
                 
+                # Create a working copy
+                working_calc_df = st.session_state[calc_key].copy()
+                
+                # Ensure all selected tools (including special cases) are present
+                # Match by "Specification 1" values
+                existing_specs = set(working_calc_df["Specification 1"])
+                new_specs = set(calc_df["Specification 1"])
+                
+                missing_specs = new_specs - existing_specs
+                if missing_specs:
+                    missing_rows = calc_df[calc_df["Specification 1"].isin(missing_specs)]
+                    # append missing tool rows
+                    working_calc_df = pd.concat([working_calc_df, missing_rows], ignore_index=True)
+                
+                # Apply recalculation to all valid rows
+                working_calc_df = recalc_costs(working_calc_df)
+                
+                # Remove duplicates (keep first occurrence)
+                working_calc_df = working_calc_df.drop_duplicates(subset=["Specification 1"], keep="first")
+                
+                # Display in editable table
                 edited_df = st.data_editor(
-                    st.session_state[calc_key],
+                    working_calc_df,
                     num_rows="dynamic",
                     key=f"calc_editor_{safe_hole_size}"
                 )
                 
-                # Update the session_state with recalculated values
-                st.session_state[calc_key] = recalc_costs(edited_df)
+                # Recalculate totals after user edits
+                updated_calc_df = recalc_costs(edited_df)
                 
-                # Section total
-                section_total = st.session_state[calc_key]["Total (MYR)"].sum()
+                # Update the session_state
+                st.session_state[calc_key] = updated_calc_df
+                
+                # Display section total
+                section_total = updated_calc_df["Total (MYR)"].sum()
                 section_totals[hole_size] = section_total
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
+                
+                # Store for Excel download (full calculated data)
+                all_calc_dfs_for_excel.append((hole_size, used_special_cases, updated_calc_df, special_cases))
 
-                    
-                # Store for Excel download
-                all_calc_dfs_for_excel.append((hole_size, used_special_cases, df_tools, special_cases))
 
     # --- Grand Total ---
     if section_totals:
@@ -595,6 +621,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
