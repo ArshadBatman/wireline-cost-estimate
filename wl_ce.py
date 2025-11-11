@@ -333,12 +333,22 @@ if uploaded_file:
                 for col in numeric_cols:
                     if col not in calc_df.columns:
                         calc_df[col] = 0
+
+                total_flat_charge = st.number_input(
+                    f"Total Flat Charge multiplier ({hole_size})", 
+                    min_value=0.0, 
+                    value=1.0, 
+                    step=0.1, 
+                    key=f"flat_{hole_size}"
+                )
+                
+                calc_df["Total Flat Charge"] = total_flat_charge
+
                 calc_df["Quantity of Tools"] = quantity_tools
                 calc_df["Total Days"] = total_days
                 calc_df["Total Months"] = total_months
                 calc_df["Total Depth (ft)"] = total_depth
                 calc_df["Total Survey (ft)"] = total_survey
-                calc_df["Total Flat Charge"] = total_flat
                 calc_df["Total Hours"] = total_hours
                 calc_df["Discount (%)"] = discount * 100
         
@@ -623,6 +633,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
