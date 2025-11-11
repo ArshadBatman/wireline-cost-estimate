@@ -426,20 +426,32 @@ if uploaded_file:
                     missing_rows = calc_df[calc_df["Specification 1"].isin(missing_specs)]
                     working_calc_df = pd.concat([working_calc_df, missing_rows], ignore_index=True)
                 
-                # Recalculate all rows
+                # --- Recalculate all rows
                 working_calc_df = recalc_costs(working_calc_df)
                 working_calc_df = working_calc_df.reset_index(drop=True)
                 
-                # Display editable table
+                # --- Style function for divider rows ---
+                def style_dividers(row):
+                    spec = str(row["Specification 1"])
+                    if spec.startswith("---"):
+                        # Blue background (#4472C4) with white text
+                        return {col: "background-color: #4472C4; color: white;" for col in row.index}
+                    else:
+                        # No style for normal rows
+                        return {col: "" for col in row.index}
+                
+                # --- Display editable table with styling ---
                 edited_df = st.data_editor(
                     working_calc_df,
                     num_rows="dynamic",
-                    key=f"calc_editor_{safe_hole_size}"
+                    key=f"calc_editor_{safe_hole_size}",
+                    cell_style=style_dividers  # <-- Apply the row style
                 )
                 
                 # Recalculate totals after user edits
                 updated_calc_df = recalc_costs(edited_df)
                 st.session_state[calc_key] = updated_calc_df
+
                 
                 # Display section total
                 section_total = updated_calc_df["Total (MYR)"].sum()
@@ -627,6 +639,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
