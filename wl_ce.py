@@ -338,6 +338,7 @@ if uploaded_file:
                 calc_df["Total Months"] = total_months
                 calc_df["Total Depth (ft)"] = total_depth
                 calc_df["Total Survey (ft)"] = total_survey
+                calc_df["Total Flat Charge"] = total_flat
                 calc_df["Total Hours"] = total_hours
                 calc_df["Discount (%)"] = discount * 100
         
@@ -374,7 +375,7 @@ if uploaded_file:
                         operating_charge = (
                             (row["Depth Charge (per ft)"] * row["Total Depth (ft)"]) +
                             (row["Survey Charge (per ft)"] * row["Total Survey (ft)"]) +
-                            row["Flat Charge"] +
+                            (row["Flat Charge"]* total_flat]) +
                             (row["Hourly Charge"] * row["Total Hours"])
                         ) * (1 - disc_fraction)
                 
@@ -622,6 +623,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
