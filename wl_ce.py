@@ -375,7 +375,7 @@ if uploaded_file:
                             continue
                 
                         disc_fraction = row["Discount (%)"] / 100
-                        total_flat = row.get("Total Flat Charge", 1)
+                        total_flat = row.get("Total Flat Charge", 0)
                 
                         # --- Operating charge including Total Flat Charge ---
                         operating_charge = (
@@ -618,6 +618,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
