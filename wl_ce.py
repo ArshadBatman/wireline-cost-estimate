@@ -367,6 +367,9 @@ if uploaded_file:
                     if "Specification 1" not in df.columns:
                         df["Specification 1"] = ""
                 
+                    # --- Ensure Total Flat Charge starts from 0 ---
+                    df["Total Flat Charge"] = df["Total Flat Charge"].fillna(0)
+                
                     totals = []
                     for idx, row in df.iterrows():
                         spec = str(row["Specification 1"])
@@ -375,7 +378,7 @@ if uploaded_file:
                             continue
                 
                         disc_fraction = row["Discount (%)"] / 100
-                        total_flat = row.get("Total Flat Charge", 0)
+                        total_flat = row.get("Total Flat Charge", 0)  # Default = 0 ✅
                 
                         # --- Operating charge including Total Flat Charge ---
                         operating_charge = (
@@ -396,6 +399,7 @@ if uploaded_file:
                 
                     df["Total (MYR)"] = totals
                     return df
+
                 
                 # Sanitize hole size for keys
                 safe_hole_size = hole_size.replace('"', '_').replace('.', '_')
@@ -618,6 +622,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
