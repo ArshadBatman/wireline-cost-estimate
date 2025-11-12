@@ -350,14 +350,21 @@ if uploaded_file:
                 
                 # --- Ensure Total Flat Charge starts from 0 ---
                 calc_df["Total Flat Charge"] = 0
-                
-                # --- Set Total Flat Charge = 1 for ECS-NMR group automatically ---
-                ecs_nmr_specs = [
-                    "ECS-NMR (150DegC Max)", "PN1: PROC_NMR1","PN2: PROC_NMR2","PN6: PROC_NMR6",
-                    "PE1: PROC_ES1","PP1: PROC_PETR1","PP6: PROC_PETR6","PN3: PROC_NMR3"
+
+                # --- Set Total Flat Charge = 1 for ECS-NMR & Dual-OBMI DSI groups automatically ---
+                flat_charge_specs = [
+                    # ECS-NMR group
+                    "ECS-NMR (150DegC Max)", "PN1: PROC_NMR1", "PN2: PROC_NMR2", "PN3: PROC_NMR3",
+                    "PN6: PROC_NMR6", "PE1: PROC_ES1", "PP1: PROC_PETR1", "PP6: PROC_PETR6",
+                    # Dual-OBMI DSI group
+                    "Dual-OBMI DSI (150DegC Max)", "PP7: PROC_PETR7", "PA7: PROC_ACOU6",
+                    "PA11: PROC_ACOU13", "PA12: PROC_ACOU14", "IM3: IMAG_SOBM", "PI1: PROC_IMAG1",
+                    "PI2: PROC_IMAG2", "PI7: PROC_IMAG7", "PI8: PROC_IMAG8", "PI9: PROC_IMAG9",
+                    "PI12: PROC_IMAG12", "PI13: PROC_IMAG13"
                 ]
-                calc_df.loc[calc_df["Specification 1"].isin(ecs_nmr_specs), "Total Flat Charge"] = 1
                 
+                calc_df.loc[calc_df["Specification 1"].isin(flat_charge_specs), "Total Flat Charge"] = 1
+
                 # --- Recalc function ---
                 def recalc_costs(df):
                     df = df.copy()
@@ -621,6 +628,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
