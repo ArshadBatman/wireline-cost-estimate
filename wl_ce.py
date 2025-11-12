@@ -324,22 +324,22 @@ if uploaded_file:
                 st.subheader(f"Selected Data - Package {selected_package}, Service {selected_service}")
                 st.dataframe(display_df.style.apply(highlight_divider, axis=1))
 
-                # --- Calculation ---
-                # --- Build Calculated Costs table from display_df ---
+                # Calculatiom
+                # Build Calculated Cost table from display_df
 
-                # --- Calculation ---
-                # --- Build Calculated Costs table from display_df ---
-                
                 calc_df = display_df.copy()
-                numeric_cols = ["Quantity of Tools","Total Days","Total Months","Total Depth (ft)",
-                                "Total Survey (ft)","Total Hours","Discount (%)","Daily Rate",
-                                "Monthly Rate","Depth Charge (per ft)","Flat Charge","Survey Charge (per ft)","Hourly Charge",
-                                "Total Flat Charge"]
+        
+                numeric_cols = [
+                    "Quantity of Tools", "Total Days", "Total Months", "Total Depth (ft)",
+                    "Total Survey (ft)", "Total Hours", "Discount (%)", "Daily Rate",
+                    "Monthly Rate", "Depth Charge (per ft)", "Flat Charge", "Survey Charge (per ft)",
+                    "Hourly Charge", "Total Flat Charge"
+                ]
                 for col in numeric_cols:
                     if col not in calc_df.columns:
                         calc_df[col] = 0
                 
-                # Assign section inputs (these come from user input above)
+                # --- Assign sidebar inputs to table ---
                 calc_df["Quantity of Tools"] = quantity_tools
                 calc_df["Total Days"] = total_days
                 calc_df["Total Months"] = total_months
@@ -347,53 +347,34 @@ if uploaded_file:
                 calc_df["Total Survey (ft)"] = total_survey
                 calc_df["Total Hours"] = total_hours
                 calc_df["Discount (%)"] = discount * 100
-
-                # --- Set default Total Flat Charge ---
-                calc_df["Total Flat Charge"] = 0  # default 0 for all rows
                 
-                # --- If ECS-NMR group is selected, set Total Flat Charge = 1 ---
-                ecs_nmr_items = [
-                    "ECS-NMR (150DegC Max)",
-                    "PN1: PROC_NMR1","PN2: PROC_NMR2","PN6: PROC_NMR6",
-                    "PE1: PROC_ES1","PP1: PROC_PETR1","PP6: PROC_PETR6",
-                    "PN3: PROC_NMR3"
+                # --- Ensure Total Flat Charge starts from 0 ---
+                calc_df["Total Flat Charge"] = 0
+                
+                # --- Set Total Flat Charge = 1 for ECS-NMR group automatically ---
+                ecs_nmr_specs = [
+                    "ECS-NMR (150DegC Max)", "PN1: PROC_NMR1","PN2: PROC_NMR2","PN6: PROC_NMR6",
+                    "PE1: PROC_ES1","PP1: PROC_PETR1","PP6: PROC_PETR6","PN3: PROC_NMR3"
                 ]
+                calc_df.loc[calc_df["Specification 1"].isin(ecs_nmr_specs), "Total Flat Charge"] = 1
                 
-                ecs_nmr_mask = calc_df["Specification 1"].isin(ecs_nmr_items)
-                calc_df.loc[ecs_nmr_mask, "Total Flat Charge"] = 1
-                
-                                
                 # --- Recalc function ---
                 def recalc_costs(df):
                     df = df.copy()
                 
-                    numeric_cols = [
-                        "Quantity of Tools","Total Days","Total Months","Total Depth (ft)",
-                        "Total Survey (ft)","Total Hours","Discount (%)",
-                        "Daily Rate","Monthly Rate","Depth Charge (per ft)",
-                        "Flat Charge","Survey Charge (per ft)","Hourly Charge",
-                        "Total Flat Charge"
-                    ]
+                    # Ensure numeric values
                     for col in numeric_cols:
-                        if col not in df.columns:
-                            df[col] = 0
                         df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
                 
-                    if "Specification 1" not in df.columns:
-                        df["Specification 1"] = ""
-                
-                    # --- Ensure Total Flat Charge starts from 0 ---
-                    df["Total Flat Charge"] = df["Total Flat Charge"].fillna(0)
-                
                     totals = []
-                    for idx, row in df.iterrows():
+                    for _, row in df.iterrows():
                         spec = str(row["Specification 1"])
                         if spec.startswith("---"):  # Divider rows
                             totals.append(0)
                             continue
                 
                         disc_fraction = row["Discount (%)"] / 100
-                        total_flat = row.get("Total Flat Charge", 0)  # Default = 0 ✅
+                        total_flat = row.get("Total Flat Charge", 0)
                 
                         # --- Operating charge including Total Flat Charge ---
                         operating_charge = (
@@ -409,35 +390,37 @@ if uploaded_file:
                             (row["Monthly Rate"] * row["Total Months"])
                         ) * (1 - disc_fraction)
                 
-                        total = operating_charge + rental_charge
-                        totals.append(total)
+                        totals.append(operating_charge + rental_charge)
                 
                     df["Total (MYR)"] = totals
                     return df
-
                 
                 # Sanitize hole size for keys
                 safe_hole_size = hole_size.replace('"', '_').replace('.', '_')
                 
                 # --- Editable Calculated Costs Table ---
-                st.subheader("Calculated Costs Table")
                 calc_key = f"calc_state_{safe_hole_size}"
-                
                 if calc_key not in st.session_state:
                     st.session_state[calc_key] = recalc_costs(calc_df)
                 
                 # Working copy
                 working_calc_df = st.session_state[calc_key].copy()
                 
-                # Ensure all selected tools (including special cases) are present
-                existing_specs = set(working_calc_df["Specification 1"])
-                new_specs = set(calc_df["Specification 1"])
-                missing_specs = new_specs - existing_specs
+                # Ensure any new rows from calc_df are included
+                missing_specs = set(calc_df["Specification 1"]) - set(working_calc_df["Specification 1"])
                 if missing_specs:
-                    missing_rows = calc_df[calc_df["Specification 1"].isin(missing_specs)]
-                    working_calc_df = pd.concat([working_calc_df, missing_rows], ignore_index=True)
+                    working_calc_df = pd.concat([working_calc_df, calc_df[calc_df["Specification 1"].isin(missing_specs)]], ignore_index=True)
                 
-                # --- Recalculate all rows ---
+                # --- Apply latest sidebar inputs to working_calc_df ---
+                working_calc_df["Quantity of Tools"] = quantity_tools
+                working_calc_df["Total Days"] = total_days
+                working_calc_df["Total Months"] = total_months
+                working_calc_df["Total Depth (ft)"] = total_depth
+                working_calc_df["Total Survey (ft)"] = total_survey
+                working_calc_df["Total Hours"] = total_hours
+                working_calc_df["Discount (%)"] = discount * 100
+                
+                # --- Recalculate totals ---
                 working_calc_df = recalc_costs(working_calc_df)
                 working_calc_df = working_calc_df.reset_index(drop=True)
                 
@@ -448,17 +431,18 @@ if uploaded_file:
                     key=f"calc_editor_{safe_hole_size}",
                 )
                 
-                # Recalculate totals after user edits
+                # --- Recalculate after user edits ---
                 updated_calc_df = recalc_costs(edited_df)
                 st.session_state[calc_key] = updated_calc_df
                 
-                # Display section total
+                # --- Display section total ---
                 section_total = updated_calc_df["Total (MYR)"].sum()
                 section_totals[hole_size] = section_total
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
                 
                 # Store for Excel download
                 all_calc_dfs_for_excel.append((hole_size, used_special_cases, updated_calc_df, special_cases))
+
 
     # --- Grand Total ---
     if section_totals:
@@ -637,6 +621,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
