@@ -358,7 +358,7 @@ if uploaded_file:
                     "PN6: PROC_NMR6", "PE1: PROC_ES1", "PP1: PROC_PETR1", "PP6: PROC_PETR6",
                     # Dual-OBMI DSI group
                     "Dual-OBMI DSI (150DegC Max)", "PP7: PROC_PETR7","PA7: PROC_ACOU6","PA11: PROC_ACOU13","PA12: PROC_ACOU14",
-                    "IM3: IMAG_SOBM","PI1: PROC_IMAG1", "PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8","PI9: PROC_IMAG9",
+                    "PI1: PROC_IMAG1", "PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8","PI9: PROC_IMAG9",
                     "PI12: PROC_IMAG12","PI13: PROC_IMAG13"
                 ]
                 
@@ -627,6 +627,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
