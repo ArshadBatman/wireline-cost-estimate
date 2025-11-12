@@ -326,6 +326,9 @@ if uploaded_file:
 
                 # --- Calculation ---
                 # --- Build Calculated Costs table from display_df ---
+
+                # --- Calculation ---
+                # --- Build Calculated Costs table from display_df ---
                 
                 calc_df = display_df.copy()
                 numeric_cols = ["Quantity of Tools","Total Days","Total Months","Total Depth (ft)",
@@ -336,18 +339,7 @@ if uploaded_file:
                     if col not in calc_df.columns:
                         calc_df[col] = 0
                 
-                # --- User input for Total Flat Charge multiplier ---
-                total_flat_charge = st.number_input(
-                    f"Total Flat Charge multiplier ({hole_size})", 
-                    min_value=0.0, 
-                    value=1.0, 
-                    step=0.1, 
-                    key=f"flat_{hole_size}"
-                )
-                
-                calc_df["Total Flat Charge"] = total_flat_charge  # default for all rows
-                
-                # Assign section inputs
+                # Assign section inputs (these come from user input above)
                 calc_df["Quantity of Tools"] = quantity_tools
                 calc_df["Total Days"] = total_days
                 calc_df["Total Months"] = total_months
@@ -378,12 +370,12 @@ if uploaded_file:
                     totals = []
                     for idx, row in df.iterrows():
                         spec = str(row["Specification 1"])
-                        if spec.startswith("---"):
+                        if spec.startswith("---"):  # Divider rows
                             totals.append(0)
                             continue
                 
                         disc_fraction = row["Discount (%)"] / 100
-                        total_flat = row.get("Total Flat Charge", 1)  # use per-row value
+                        total_flat = row.get("Total Flat Charge", 1)
                 
                         # --- Operating charge including Total Flat Charge ---
                         operating_charge = (
@@ -426,11 +418,11 @@ if uploaded_file:
                     missing_rows = calc_df[calc_df["Specification 1"].isin(missing_specs)]
                     working_calc_df = pd.concat([working_calc_df, missing_rows], ignore_index=True)
                 
-                # --- Recalculate all rows
+                # --- Recalculate all rows ---
                 working_calc_df = recalc_costs(working_calc_df)
                 working_calc_df = working_calc_df.reset_index(drop=True)
                 
-                # --- Display editable table with styling ---
+                # --- Display editable table ---
                 edited_df = st.data_editor(
                     working_calc_df,
                     num_rows="dynamic",
@@ -440,7 +432,6 @@ if uploaded_file:
                 # Recalculate totals after user edits
                 updated_calc_df = recalc_costs(edited_df)
                 st.session_state[calc_key] = updated_calc_df
-
                 
                 # Display section total
                 section_total = updated_calc_df["Total (MYR)"].sum()
@@ -449,7 +440,6 @@ if uploaded_file:
                 
                 # Store for Excel download
                 all_calc_dfs_for_excel.append((hole_size, used_special_cases, updated_calc_df, special_cases))
-
 
     # --- Grand Total ---
     if section_totals:
@@ -628,6 +618,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
