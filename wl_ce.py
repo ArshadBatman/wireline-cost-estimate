@@ -347,7 +347,22 @@ if uploaded_file:
                 calc_df["Total Survey (ft)"] = total_survey
                 calc_df["Total Hours"] = total_hours
                 calc_df["Discount (%)"] = discount * 100
+
+                # --- Set default Total Flat Charge ---
+                calc_df["Total Flat Charge"] = 0  # default 0 for all rows
                 
+                # --- If ECS-NMR group is selected, set Total Flat Charge = 1 ---
+                ecs_nmr_items = [
+                    "ECS-NMR (150DegC Max)",
+                    "PN1: PROC_NMR1","PN2: PROC_NMR2","PN6: PROC_NMR6",
+                    "PE1: PROC_ES1","PP1: PROC_PETR1","PP6: PROC_PETR6",
+                    "PN3: PROC_NMR3"
+                ]
+                
+                ecs_nmr_mask = calc_df["Specification 1"].isin(ecs_nmr_items)
+                calc_df.loc[ecs_nmr_mask, "Total Flat Charge"] = 1
+                
+                                
                 # --- Recalc function ---
                 def recalc_costs(df):
                     df = df.copy()
@@ -622,6 +637,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
