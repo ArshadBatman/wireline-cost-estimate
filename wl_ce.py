@@ -585,7 +585,7 @@ if st.button("Download Cost Estimate Excel"):
                         ws[f"M{current_row}"] = total_months
                         ws[f"N{current_row}"] = total_depth
                         ws[f"O{current_row}"] = total_survey
-                        ws[f"P{current_row}"] = ws[f"I{current_row}"].value if ws[f"I{current_row}"].value else 0
+                        ws[f"P{current_row}"] = item_row.get("Total Flat Charge", 0)
                         ws[f"Q{current_row}"] = total_hours
                         ws[f"R{current_row}"] = discount_pct * 100
 
@@ -636,7 +636,7 @@ if st.button("Download Cost Estimate Excel"):
                         ws[f"M{current_row}"] = total_months
                         ws[f"N{current_row}"] = total_depth
                         ws[f"O{current_row}"] = total_survey
-                        ws[f"P{current_row}"] = ws[f"I{current_row}"].value if ws[f"I{current_row}"].value else 0
+                        ws[f"P{current_row}"] = item_row.get("Total Flat Charge", 0)
                         ws[f"Q{current_row}"] = total_hours
                         ws[f"R{current_row}"] = discount_pct * 100
             
@@ -672,6 +672,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
