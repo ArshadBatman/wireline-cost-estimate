@@ -332,6 +332,22 @@ if uploaded_file:
                 # Build Calculated Cost table from display_df
 
                 calc_df = display_df.copy()
+
+                # --- Force Quantity = 0 for specific tools in Well A 8.5" Hole Section ---
+                if well_option == "Well A" and hole_size == '8.5"':
+                    force_zero_tools = [
+                        "AU14", "NE1", "DE1", "RE4", "GR1", "EC1", "NM1", "PN1", "PN2", "PN6",
+                        "PE1", "PP1", "PP6", "PN3", "AU3", "AC3", "AU2", "PP7", "PA7", "PA11",
+                        "PA12", "IM3", "PI1", "PI2", "PI7", "PI8", "PI9", "PI12", "PI13"
+                    ]
+                
+                    if "Specification 1" in calc_df.columns:
+                        # Apply only if the row contains any of these codes
+                        calc_df.loc[
+                            calc_df["Specification 1"].str.extract(r"^([A-Z0-9]+):")[0].isin(force_zero_tools),
+                            "Quantity of Tools"
+                        ] = 0
+
         
                 numeric_cols = [
                     "Quantity of Tools", "Total Days", "Total Months", "Total Depth (ft)",
@@ -676,6 +692,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
