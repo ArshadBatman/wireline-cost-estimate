@@ -109,20 +109,21 @@ if uploaded_file:
 
             # Sidebar inputs per section
             st.sidebar.subheader(f"Inputs for {hole_size}\" Section")
-            
+
             # --- Force default quantity = 0 for Well A 8.5" Hole Section ---
             if well_option == "Well A" and hole_size == '8.5"':
+                st.session_state[f"qty_{hole_size}"] = 0  # overwrite session state
                 default_qty = 0
             else:
                 default_qty = st.session_state.get(f"qty_{hole_size}", 2)
             
             quantity_tools = st.sidebar.number_input(
                 f"Quantity of Tools ({hole_size})",
-                min_value=0,  # allow zero
+                min_value=0,
                 value=default_qty,
                 key=f"qty_{hole_size}"
             )
-            
+
             total_days = st.sidebar.number_input(
                 f"Total Days ({hole_size})", min_value=0, value=st.session_state.get(f"days_{hole_size}", 0), key=f"days_{hole_size}"
             )
@@ -683,6 +684,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
