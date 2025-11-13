@@ -590,10 +590,16 @@ if st.button("Download Cost Estimate Excel"):
                         ws[f"R{current_row}"] = discount_pct * 100
 
                         rental_charge = qty * ((item_row.get("Daily Rate",0)*total_days) + (item_row.get("Monthly Rate",0)*total_months))*(1-discount_pct)
-                        operating_charge = ((item_row.get("Depth Charge (per ft)",0)*total_depth)+
-                                            (item_row.get("Survey Charge (per ft)",0)*total_survey)+
-                                            (item_row.get("Flat Charge",0))+ 
-                                            (item_row.get("Hourly Charge",0)*total_hours))*(1-discount_pct)
+                        # Get Total Flat Charge from DataFrame (default 0 if missing)
+                        total_flat = item_row.get("Total Flat Charge", 0)
+                        
+                        operating_charge = (
+                            (item_row.get("Depth Charge (per ft)", 0) * total_depth) +
+                            (item_row.get("Survey Charge (per ft)", 0) * total_survey) +
+                            (item_row.get("Flat Charge", 0) * total_flat) +
+                            (item_row.get("Hourly Charge", 0) * total_hours)
+                        ) * (1 - discount_pct)
+
                         total_myr = rental_charge + operating_charge
 
                         ws[f"S{current_row}"] = total_myr
@@ -635,10 +641,17 @@ if st.button("Download Cost Estimate Excel"):
                         ws[f"R{current_row}"] = discount_pct * 100
             
                         rental_charge = qty * ((item_row.get("Daily Rate",0)*total_days) + (item_row.get("Monthly Rate",0)*total_months))*(1-discount_pct)
-                        operating_charge = ((item_row.get("Depth Charge (per ft)",0)*total_depth)+
-                                            (item_row.get("Survey Charge (per ft)",0)*total_survey)+
-                                            (item_row.get("Flat Charge",0))+ 
-                                            (item_row.get("Hourly Charge",0)*total_hours))*(1-discount_pct)
+                        
+                        # Get Total Flat Charge value for each tool
+                        total_flat = item_row.get("Total Flat Charge", 0)
+                        
+                        operating_charge = (
+                            (item_row.get("Depth Charge (per ft)", 0) * total_depth) +
+                            (item_row.get("Survey Charge (per ft)", 0) * total_survey) +
+                            (item_row.get("Flat Charge", 0) * total_flat) +
+                            (item_row.get("Hourly Charge", 0) * total_hours)
+                        ) * (1 - discount_pct)
+                        
                         total_myr = rental_charge + operating_charge
             
                         ws[f"S{current_row}"] = total_myr
@@ -659,6 +672,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
