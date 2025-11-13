@@ -247,8 +247,8 @@ if uploaded_file:
                                                                       "FP18: FPS_SAMP","FP19: FPS_SPHA","FP23: FPS_TRA",
                                                                       "FP24: FPS_TRK","FP28: FPS_FCHA_1","FP33: FPS_FCHA_6",
                                                                       "FP34: FPS_FCHA_7","FP14: FPS_PUMP","FP14: FPS_PUMP",
-                                                                      "FP42: FPS_PROB_LD","FP11: FPS_PROB_FO","FP26: FPS_FCON",
-                                                                      "DT3: RTDT_PER","PPT12: PROC_PT12","FP7: FPS_SPPT_2"],
+                                                                      "FP42: FPS_PROB_XLD","FP11: FPS_PROB_FO","FP26: FPS_FCON",
+                                                                      "DT3:RTDT_PER","PPT12: PROC_PT12","FP7: FPS_SPPT_2"],
                     "ECS-NMR (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","EC1: ES_1","NM1: NMR_1","PN1: PROC_NMR1","PN2: PROC_NMR2","PN6: PROC_NMR6","PE1: PROC_ES1","PP1: PROC_PETR1","PP6: PROC_PETR6", "PN3: PROC_NMR3"],
                     "IBC (PowerFlex)-CBL (150DegC Max)": ["CE1:CES_CBL","CE4:CES_CBI_3","CE6:CES_CBI_5", "DT3:RTDT_PER", "PPT13:PROC_PT13", "DT12:USI-DIG-LP-CET3"],
                     "DSI-QuantaGeo-Rt Scanner (150DegC Max)": ["AU14: AUX_SURELOC","GR1: GR_TOTL","AU3: AUX_INCL", "AC4: ACOU_ADD1", "AC3: ACOU_3", "AU2:AUX_PCAL",
@@ -684,6 +684,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
