@@ -359,11 +359,26 @@ if uploaded_file:
                         "PN6: PROC_NMR6", "PE1: PROC_ES1", "PP1: PROC_PETR1", "PP6: PROC_PETR6",
                         "Dual-OBMI DSI (150DegC Max)", "PA12: PROC_ACOU14", "PI1: PROC_IMAG1", "PI2: PROC_IMAG2", 
                         "PI7: PROC_IMAG7", "PI8: PROC_IMAG8", "PI9: PROC_IMAG9", "PI12: PROC_IMAG12", "PI13: PROC_IMAG13",
+                        "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "PPT12: PROC_PT12",
                         "Unit, Cables & Conveyance", "DT2:RTDT_SAT"
                     ],
+                    # MDT=2
+                    2: [
+                        "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "FP19: FPS_SPHA", "FP23: FPS_TRA"
+                    ],
+                    
                     # Dual-OBMI and MDT = 4
                     4: [
-                        "Dual-OBMI DSI (150DegC Max)", "PP7: PROC_PETR7", "PA7: PROC_ACOU6", "PA11: PROC_ACOU13"
+                        "Dual-OBMI DSI (150DegC Max)", "PP7: PROC_PETR7", "PA7: PROC_ACOU6", "PA11: PROC_ACOU13",
+                        "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "DT3: RTDT_PER"
+                    ],
+                    # MDT=5
+                    5: [
+                        "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "FP18: FPS_SAMP", "FP28: FPS_FCHA_1", "FP33: FPS_FCHA_6","FP34: FPS_FCHA_7","FP11: FPS_PROB_FO","FP26: FPS_FCON",
+                    ],
+                    # MDT=10
+                    10: [
+                        "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "FP42: FPS_PROB_LD"
                     ],
                 
                     # XL Rock group → Total Flat Charge = 50
@@ -644,6 +659,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
