@@ -112,7 +112,7 @@ if uploaded_file:
             # Use session_state default values if set (these were set above when Well A selected)
             quantity_tools = st.sidebar.number_input(
                 f"Quantity of Tools ({hole_size})",
-                min_value=1,
+                min_value=0,
                 value=st.session_state.get(f"qty_{hole_size}", 2),
                 key=f"qty_{hole_size}"
             )
@@ -692,6 +692,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
