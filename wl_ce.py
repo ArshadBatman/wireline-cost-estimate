@@ -358,7 +358,8 @@ if uploaded_file:
                         "ECS-NMR (150DegC Max)", "PN1: PROC_NMR1", "PN2: PROC_NMR2", "PN3: PROC_NMR3",
                         "PN6: PROC_NMR6", "PE1: PROC_ES1", "PP1: PROC_PETR1", "PP6: PROC_PETR6",
                         "Dual-OBMI DSI (150DegC Max)", "PA12: PROC_ACOU14", "PI1: PROC_IMAG1", "PI2: PROC_IMAG2", 
-                        "PI7: PROC_IMAG7", "PI8: PROC_IMAG8", "PI9: PROC_IMAG9", "PI12: PROC_IMAG12", "PI13: PROC_IMAG13"
+                        "PI7: PROC_IMAG7", "PI8: PROC_IMAG8", "PI9: PROC_IMAG9", "PI12: PROC_IMAG12", "PI13: PROC_IMAG13",
+                        "Unit, Cables & Conveyance", "DT2:RTDT_SAT"
                     ],
                     # Dual-OBMI and MDT = 4
                     4: [
@@ -643,6 +644,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
