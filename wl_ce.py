@@ -350,20 +350,33 @@ if uploaded_file:
                 
                 # --- Ensure Total Flat Charge starts from 0 ---
                 calc_df["Total Flat Charge"] = 0
-
-                # --- Set Total Flat Charge = 1 for ECS-NMR & Dual-OBMI DSI groups automatically ---
-                flat_charge_specs = [
-                    # ECS-NMR group
-                    "ECS-NMR (150DegC Max)", "PN1: PROC_NMR1", "PN2: PROC_NMR2", "PN3: PROC_NMR3",
-                    "PN6: PROC_NMR6", "PE1: PROC_ES1", "PP1: PROC_PETR1", "PP6: PROC_PETR6",
-                    # Dual-OBMI DSI group
-                    "Dual-OBMI DSI (150DegC Max)", "PP7: PROC_PETR7","PA7: PROC_ACOU6","PA11: PROC_ACOU13","PA12: PROC_ACOU14",
-                    "PI1: PROC_IMAG1", "PI2: PROC_IMAG2","PI7: PROC_IMAG7","PI8: PROC_IMAG8","PI9: PROC_IMAG9",
-                    "PI12: PROC_IMAG12","PI13: PROC_IMAG13"
-                ]
                 
-                calc_df.loc[calc_df["Specification 1"].isin(flat_charge_specs), "Total Flat Charge"] = 1
-
+                # --- Define groups and their Total Flat Charge values ---
+                flat_charge_groups = {
+                    # ECS-NMR group → Total Flat Charge = 1
+                    1: [
+                        "ECS-NMR (150DegC Max)", "PN1: PROC_NMR1", "PN2: PROC_NMR2", "PN3: PROC_NMR3",
+                        "PN6: PROC_NMR6", "PE1: PROC_ES1", "PP1: PROC_PETR1", "PP6: PROC_PETR6",
+                        "Dual-OBMI DSI (150DegC Max)", "PP7: PROC_PETR7", "PA7: PROC_ACOU6", "PA11: PROC_ACOU13",
+                        "PA12: PROC_ACOU14", "PI1: PROC_IMAG1", "PI2: PROC_IMAG2", "PI7: PROC_IMAG7",
+                        "PI8: PROC_IMAG8", "PI9: PROC_IMAG9", "PI12: PROC_IMAG12", "PI13: PROC_IMAG13"
+                    ],
+                
+                    # XL Rock group → Total Flat Charge = 50
+                    50: [
+                        "XL Rock (150DegC Max)", "SC2: SC_ADD1", "SC2: SC_ADD2"
+                    ]
+                }
+                
+                # --- Apply Total Flat Charge per group (case-insensitive partial match) ---
+                for charge_value, specs in flat_charge_groups.items():
+                    calc_df.loc[
+                        calc_df["Specification 1"].str.upper().apply(
+                            lambda x: any(spec.upper() in x for spec in specs)
+                        ),
+                        "Total Flat Charge"
+                    ] = charge_value
+                    
                 # --- Recalc function ---
                 def recalc_costs(df):
                     df = df.copy()
@@ -627,6 +640,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
