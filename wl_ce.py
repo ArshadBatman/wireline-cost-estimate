@@ -382,7 +382,7 @@ if uploaded_file:
                     # Dual-OBMI and MDT = 4
                     4: [
                         "Dual-OBMI DSI (150DegC Max)", "PP7: PROC_PETR7", "PA7: PROC_ACOU6", "PA11: PROC_ACOU13",
-                        "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "DT3: RTDT_PER"
+                        "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "DT3:RTDT_PER"
                     ],
                     # MDT=5
                     5: [
@@ -390,7 +390,7 @@ if uploaded_file:
                     ],
                     # MDT=10
                     10: [
-                        "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "FP42: FPS_PROB_LD"
+                        "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "FP42: FPS_PROB_XLD"
                     ],
                 
                     # XL Rock group → Total Flat Charge = 50
@@ -684,6 +684,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
