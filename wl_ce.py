@@ -582,12 +582,6 @@ if st.button("Download Cost Estimate Excel"):
             current_row = 5
             first_data_row = current_row  # For Grand Total formula
         
-
-                
-                for item in special_cases_section[sc]:
-                    item_rows = df_tools_section[df_tools_section["Specification 1"] == item]
-                    if not item_rows.empty:
-                        item_row = item_rows.iloc[0]
                         # Fill columns
                         ws[f"B{current_row}"] = item_row.get("Reference","")
                         ws[f"C{current_row}"] = item_row.get("Specification 1","")
@@ -691,6 +685,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
