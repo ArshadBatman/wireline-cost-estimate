@@ -516,11 +516,12 @@ if uploaded_file:
 if st.button("Download Cost Estimate Excel"):
     output = BytesIO()
 
-    # --- Fix the all_calc_dfs_for_excel to always have 4 elements ---
+    # --- Fix all_calc_dfs_for_excel to always have 4 elements ---
     all_calc_dfs_fixed = []
     for idx, item in enumerate(all_calc_dfs_for_excel):
         if isinstance(item, tuple):
             if len(item) == 2:
+                # Only hole_size and df_tools_section provided
                 hole_size, df_tools_section = item
                 used_special_cases = {}
                 special_cases_section = {}
@@ -532,9 +533,8 @@ if st.button("Download Cost Estimate Excel"):
         else:
             st.warning(f"Skipping invalid item at index {idx}: {item}")
 
-    # --- Ensure there is at least one sheet to prevent OpenPyXL error ---
+    # --- Ensure at least one sheet exists ---
     if not all_calc_dfs_fixed:
-        # Create a placeholder sheet
         all_calc_dfs_fixed.append(("Placeholder", {}, pd.DataFrame([{"Reference":"N/A","Specification 1":"N/A"}]), {}))
 
     # --- Write Excel ---
@@ -548,8 +548,6 @@ if st.button("Download Cost Estimate Excel"):
 
             # Write DataFrame to Excel
             df_tools_section.to_excel(writer, sheet_name=sheet_name, index=False, startrow=4)
-
-            # Access worksheet for formatting
             ws = writer.sheets[sheet_name]
 
             # --- Header formatting ---
@@ -574,7 +572,7 @@ if st.button("Download Cost Estimate Excel"):
             ws.merge_cells("U2:U3"); ws["U2"] = "Break Down"; ws["U4"] = "Rental Charge (MYR)"
             ws.merge_cells("V2:V3"); ws["V2"] = "Break Down"; ws["V4"] = "Operating Charge (MYR)"
 
-            # --- Apply colors ---
+            # --- Colors ---
             white_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
             light_green_fill = PatternFill(start_color="CCCC99", end_color="CCCC99", fill_type="solid")
             blue_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
@@ -588,38 +586,118 @@ if st.button("Download Cost Estimate Excel"):
             for cell in ["K2","K3","K4","L3","L4","M3","M4","N3","N4","O4","P4","Q4"]:
                 ws[cell].fill = blue_fill
                 ws[cell].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-            ws["U4"].fill = light_green_fill
-            ws["V4"].fill = light_green_fill
+            ws["U4"].fill = ws["V4"].fill = light_green_fill
             ws["U4"].alignment = ws["V4"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-            # --- Insert special tools and normal tools safely ---
+            # --- Insert special tools ---
             current_row = 5
             first_data_row = current_row
-            # Special tools
+
             for sc in used_special_cases:
                 ws[f"B{current_row}"] = f"{hole_size}in Section: {sc}"
                 ws[f"B{current_row}"].fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                 ws[f"B{current_row}"].alignment = Alignment(horizontal="center")
                 current_row += 1
+
                 for item in special_cases_section.get(sc, []):
                     item_rows = df_tools_section[df_tools_section["Specification 1"] == item]
                     if not item_rows.empty:
                         item_row = item_rows.iloc[0]
+
                         ws[f"B{current_row}"] = item_row.get("Reference","")
                         ws[f"C{current_row}"] = item_row.get("Specification 1","")
                         ws[f"D{current_row}"] = item_row.get("Specification 2","")
-                        # ... Fill the rest of your columns as before ...
+                        ws[f"E{current_row}"] = item_row.get("Daily Rate",0)
+                        ws[f"F{current_row}"] = item_row.get("Monthly Rate",0)
+                        ws[f"G{current_row}"] = item_row.get("Depth Charge (per ft)",0)
+                        ws[f"H{current_row}"] = item_row.get("Survey Charge (per ft)",0)
+                        ws[f"I{current_row}"] = item_row.get("Flat Charge",0)
+                        ws[f"J{current_row}"] = item_row.get("Hourly Charge",0)
+
+                        # --- Fetch session_state safely ---
+                        qty = st.session_state.get(f"qty_{hole_size}",0)
+                        total_days = st.session_state.get(f"days_{hole_size}",0)
+                        total_months = st.session_state.get(f"months_{hole_size}",0)
+                        total_depth = st.session_state.get(f"depth_{hole_size}",0)
+                        total_survey = st.session_state.get(f"survey_{hole_size}",0)
+                        total_hours = st.session_state.get(f"hours_{hole_size}",0)
+                        discount_pct = st.session_state.get(f"disc_{hole_size}",0)
+
+                        ws[f"K{current_row}"] = qty
+                        ws[f"L{current_row}"] = total_days
+                        ws[f"M{current_row}"] = total_months
+                        ws[f"N{current_row}"] = total_depth
+                        ws[f"O{current_row}"] = total_survey
+                        ws[f"P{current_row}"] = item_row.get("Total Flat Charge",0)
+                        ws[f"Q{current_row}"] = total_hours
+                        ws[f"R{current_row}"] = discount_pct * 100
+
+                        # --- Charges ---
+                        rental_charge = qty * ((item_row.get("Daily Rate",0)*total_days) + (item_row.get("Monthly Rate",0)*total_months))*(1-discount_pct)
+                        total_flat = item_row.get("Total Flat Charge",0)
+                        operating_charge = ((item_row.get("Depth Charge (per ft)",0)*total_depth) + 
+                                            (item_row.get("Survey Charge (per ft)",0)*total_survey) +
+                                            (item_row.get("Flat Charge",0)*total_flat) + 
+                                            (item_row.get("Hourly Charge",0)*total_hours)) * (1-discount_pct)
+                        total_myr = rental_charge + operating_charge
+
+                        ws[f"S{current_row}"] = total_myr
+                        ws[f"U{current_row}"] = rental_charge
+                        ws[f"V{current_row}"] = operating_charge
+
                         current_row += 1
-            # Normal tools
+
+            # --- Insert normal tools ---
             for item in df_tools_section["Specification 1"]:
                 if item not in sum(special_cases_section.values(), []):
-                    ws[f"B{current_row}"] = item
-                    current_row += 1
+                    item_rows = df_tools_section[df_tools_section["Specification 1"] == item]
+                    for _, item_row in item_rows.iterrows():
+                        ws[f"B{current_row}"] = item_row.get("Reference","")
+                        ws[f"C{current_row}"] = item_row.get("Specification 1","")
+                        ws[f"D{current_row}"] = item_row.get("Specification 2","")
+                        ws[f"E{current_row}"] = item_row.get("Daily Rate",0)
+                        ws[f"F{current_row}"] = item_row.get("Monthly Rate",0)
+                        ws[f"G{current_row}"] = item_row.get("Depth Charge (per ft)",0)
+                        ws[f"H{current_row}"] = item_row.get("Survey Charge (per ft)",0)
+                        ws[f"I{current_row}"] = item_row.get("Flat Charge",0)
+                        ws[f"J{current_row}"] = item_row.get("Hourly Charge",0)
 
-            # --- Grand Total formula ---
+                        qty = st.session_state.get(f"qty_{hole_size}",0)
+                        total_days = st.session_state.get(f"days_{hole_size}",0)
+                        total_months = st.session_state.get(f"months_{hole_size}",0)
+                        total_depth = st.session_state.get(f"depth_{hole_size}",0)
+                        total_survey = st.session_state.get(f"survey_{hole_size}",0)
+                        total_hours = st.session_state.get(f"hours_{hole_size}",0)
+                        discount_pct = st.session_state.get(f"disc_{hole_size}",0)
+
+                        ws[f"K{current_row}"] = qty
+                        ws[f"L{current_row}"] = total_days
+                        ws[f"M{current_row}"] = total_months
+                        ws[f"N{current_row}"] = total_depth
+                        ws[f"O{current_row}"] = total_survey
+                        ws[f"P{current_row}"] = item_row.get("Total Flat Charge",0)
+                        ws[f"Q{current_row}"] = total_hours
+                        ws[f"R{current_row}"] = discount_pct * 100
+
+                        rental_charge = qty * ((item_row.get("Daily Rate",0)*total_days) + (item_row.get("Monthly Rate",0)*total_months))*(1-discount_pct)
+                        total_flat = item_row.get("Total Flat Charge",0)
+                        operating_charge = ((item_row.get("Depth Charge (per ft)",0)*total_depth) + 
+                                            (item_row.get("Survey Charge (per ft)",0)*total_survey) +
+                                            (item_row.get("Flat Charge",0)*total_flat) + 
+                                            (item_row.get("Hourly Charge",0)*total_hours)) * (1-discount_pct)
+                        total_myr = rental_charge + operating_charge
+
+                        ws[f"S{current_row}"] = total_myr
+                        ws[f"U{current_row}"] = rental_charge
+                        ws[f"V{current_row}"] = operating_charge
+
+                        current_row += 1
+
+            # --- Grand Total ---
             ws[f"T{first_data_row}"] = f"=SUM(S{first_data_row}:S{current_row-1})"
             ws[f"T{first_data_row}"].alignment = Alignment(horizontal="center")
 
+    # --- Download button ---
     output.seek(0)
     st.download_button(
         "Download Cost Estimate Excel",
@@ -627,8 +705,6 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
-
 
 
 
