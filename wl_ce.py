@@ -514,22 +514,37 @@ if uploaded_file:
 
 # --- Excel Download ---
 if st.button("Download Cost Estimate Excel"):
-    output = BytesIO()
 
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        # Step 0: Create a temporary visible sheet
-        pd.DataFrame([{"Dummy": "Placeholder"}]).to_excel(writer, sheet_name="TempSheet", index=False)
-        
-        if all_calc_dfs_for_excel:
-            for hole_size, used_special_cases, df_tools_section, special_cases_section in all_calc_dfs_for_excel:
-                sheet_name = f'{hole_size}" Hole'
-                if df_tools_section.empty:
+    # Check if all_calc_dfs_for_excel is valid
+    if not all_calc_dfs_for_excel or not isinstance(all_calc_dfs_for_excel, list):
+        st.warning("No data available for Excel download!")
+    else:
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+
+            # If all_calc_dfs_for_excel is empty, add a dummy sheet to avoid openpyxl error
+            if len(all_calc_dfs_for_excel) == 0:
+                pd.DataFrame([{"Note": "No data"}]).to_excel(writer, sheet_name="Sheet1", index=False)
+
+            for idx, item in enumerate(all_calc_dfs_for_excel):
+                # Validate each item
+                if not isinstance(item, (list, tuple)) or len(item) != 4:
+                    st.warning(f"Skipping invalid item at index {idx}: {item}")
+                    continue
+
+                hole_size, used_special_cases, df_tools_section, special_cases_section = item
+
+                # Ensure df_tools_section is a DataFrame
+                if df_tools_section is None or df_tools_section.empty:
                     df_tools_section = pd.DataFrame([{"Reference":"N/A","Specification 1":"N/A"}])
+
+                # Write dataframe to Excel to create a visible sheet
+                sheet_name = f'{hole_size}" Hole'
                 df_tools_section.to_excel(writer, sheet_name=sheet_name, index=False, startrow=4)
+
+                # Access worksheet for formatting
                 ws = writer.sheets[sheet_name]
 
-                # --- Your header formatting, coloring, and row insertion here ---
-                # (Insert special tools and non-special tools logic as before)
                 # --- Header formatting ---
                 ws.merge_cells("B2:B4"); ws["B2"]="Reference"
                 ws.merge_cells("C2:C4"); ws["C2"]="Specification 1"
@@ -550,25 +565,32 @@ if st.button("Download Cost Estimate Excel"):
                 ws.merge_cells("S2:S4"); ws["S2"] = "Total (MYR)"
                 ws.merge_cells("T2:T4"); ws["T2"] = "Grand Total Price (MYR)"
                 ws.merge_cells("U2:U3"); ws["U2"] = "Break Down"; ws["U4"] = "Rental Charge (MYR)"
-                ws.merge_cells("V2:V3"); ws["V2"] = "Break Down"; ws["V4"] = "Operating Charge (MYR)"
+                ws.merge_cells("V2:V3"); ws["V2"] = "Break Down"; ws["V4"] = "Operating Charge (MYR)"   
 
                 # --- Apply colors ---
                 white_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
                 light_green_fill = PatternFill(start_color="CCCC99", end_color="CCCC99", fill_type="solid")
                 blue_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
 
-                for cell in ["B2","B3","B4","C2","C3","C4","D2","D3","D4","R2","R3","R4","S2","S3","S4","T2","T3","T4","U2","U3","V2","V3"]:
+                # Apply formatting to header cells
+                header_cells = {
+                    "white": ["B2","B3","B4","C2","C3","C4","D2","D3","D4","R2","R3","R4","S2","S3","S4","T2","T3","T4","U2","U3","V2","V3"],
+                    "light_green": ["E2","E3","E4","F2","F3","F4","G2","G3","G4","H4","I4","J4","U4","V4"],
+                    "blue": ["K2","K3","K4","L3","L4","M3","M4","N3","N4","O4","P4","Q4"]
+                }
+                for cell in header_cells["white"]:
                     ws[cell].fill = white_fill
                     ws[cell].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-
-                for cell in ["E2","E3","E4","F2","F3","F4","G2","G3","G4","H4","I4","J4","U4","V4"]:
+                for cell in header_cells["light_green"]:
                     ws[cell].fill = light_green_fill
                     ws[cell].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-
-                for cell in ["K2","K3","K4","L3","L4","M3","M4","N3","N4","O4","P4","Q4"]:
+                for cell in header_cells["blue"]:
                     ws[cell].fill = blue_fill
                     ws[cell].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
+                # --- Insert your tool data as before ---
+                # (You can reuse your existing loops for special_cases and non-special tools here)
+                # Make sure to validate `safe_hole_size` or session_state keys exist
                 # --- Insert data rows ---
                 current_row = 5
                 first_data_row = current_row
@@ -676,31 +698,22 @@ if st.button("Download Cost Estimate Excel"):
 
                             current_row += 1
 
-                # Grand Total
-                ws[f"T{first_data_row}"] = f"=SUM(S{first_data_row}:S{current_row-1})"
-                ws[f"T{first_data_row}"].alignment = Alignment(horizontal="center")
 
-        
-        # Step 1: Remove temporary sheet if there is at least 1 real sheet
-        if "TempSheet" in writer.sheets and len(writer.sheets) > 1:
-            std_wb = writer.book
-            std_wb.remove(std_wb["TempSheet"])
+                # --- Grand Total placeholder ---
+                ws[f"T5"] = f"=SUM(S5:S{5 + len(df_tools_section) - 1})"
+                ws[f"T5"].alignment = Alignment(horizontal="center")
 
-    output.seek(0)
-    st.download_button(
-        "Download Cost Estimate Excel",
-        data=output,
-        file_name="Cost_Estimate.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+        output.seek(0)
+        st.download_button(
+            "Download Cost Estimate Excel",
+            data=output,
+            file_name="Cost_Estimate.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
 
 
-
-
-
-
-
+              
 
 
 
