@@ -352,43 +352,38 @@ if uploaded_file:
                     if col not in calc_df.columns:
                         calc_df[col] = 0
                 
-                # --- Well A Exceptions for Tool Quantities ---
-                exceptions_1225 = {
-                    "FP18: FPS_SAMP": 11,
-                    "FP19: FPS_SPHA": 4,
-                    "FP23: FPS_TRA": 4,
-                    "FP24: FPS_TRK": 1,
-                    "FP33: FPS_FCHA_6": 1,
-                    "FP34: FPS_FCHA_7": 1,
-                }
-                
-                exceptions_85 = {
-                    "FP18: FPS_SAMP": 5,
-                    "FP19: FPS_SPHA": 2,
-                    "FP23: FPS_TRA": 2,
-                }
-                
+                # --- Determine exceptions map ---
                 exceptions_map = None
                 if selected_well == "Well A":
                     if hole_size == '12.25"':
-                        exceptions_map = exceptions_1225
+                        exceptions_map = {
+                            "FP18: FPS_SAMP": 11,
+                            "FP19: FPS_SPHA": 4,
+                            "FP23: FPS_TRA": 4,
+                            "FP24: FPS_TRK": 1,
+                            "FP33: FPS_FCHA_6": 1,
+                            "FP34: FPS_FCHA_7": 1,
+                        }
                     elif hole_size == '8.5"':
-                        exceptions_map = exceptions_85
+                        exceptions_map = {
+                            "FP18: FPS_SAMP": 5,
+                            "FP19: FPS_SPHA": 2,
+                            "FP23: FPS_TRA": 2,
+                        }
                 
-                # Apply sidebar quantity only if no exception applies
-                if not exceptions_map:
-                    calc_df["Quantity of Tools"] = quantity_tools
-                
-                # Apply Well A exceptions
+                # --- Apply exceptions to calc_df first ---
                 if exceptions_map:
-                    # Extract tool code (first part before extra details)
-                    calc_df["clean_spec"] = calc_df["Specification 1"].str.extract(r"^([^:]+:\s*[^:]+)")[0].str.strip()
+                    calc_df["clean_spec"] = calc_df["Specification 1"].str.strip().str.upper()
                     for spec_name, qty in exceptions_map.items():
                         calc_df.loc[
-                            calc_df["clean_spec"].str.upper() == spec_name.upper(),
+                            calc_df["clean_spec"] == spec_name.upper(),
                             "Quantity of Tools"
                         ] = qty
                     calc_df.drop(columns=["clean_spec"], inplace=True)
+                else:
+                    # If no exceptions, assign sidebar quantity
+                    calc_df["Quantity of Tools"] = quantity_tools
+
                 
                 # Assign other sidebar inputs
                 calc_df["Total Days"] = total_days
@@ -744,6 +739,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
