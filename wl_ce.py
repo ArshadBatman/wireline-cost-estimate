@@ -527,7 +527,7 @@ if uploaded_file:
 if st.button("Download Cost Estimate Excel"):
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        for hole_size, used_special_cases, df_tools_section, special_cases_section in all_calc_dfs_for_excel:
+        for hole_size, used_special_cases, df_tools_section, flat_charge_sections in all_calc_dfs_for_excel:
             sheet_name = f'{hole_size}" Hole'
             wb = writer.book
             ws = wb.create_sheet(title=sheet_name)
@@ -541,7 +541,6 @@ if st.button("Download Cost Estimate Excel"):
             ws.merge_cells("G3:J3"); ws["G3"]="Operating Charge"
             ws["E4"]="Daily Rate"; ws["F4"]="Monthly Rate"; ws["G4"]="Depth Charge (per ft)"
             ws["H4"]="Survey Charge (per ft)"; ws["I4"]="Flat Charge"; ws["J4"]="Hourly Charge"
-
             ws.merge_cells("K2:Q2"); ws["K2"] = "Operation Estimated"
             ws.merge_cells("K3:K4"); ws["K3"] = "Quantity of Tools"
             ws.merge_cells("L3:M3"); ws["L3"] = "Rental Parameters"
@@ -555,7 +554,7 @@ if st.button("Download Cost Estimate Excel"):
             ws.merge_cells("U2:U3"); ws["U2"] = "Break Down"; ws["U4"] = "Rental Charge (MYR)"
             ws.merge_cells("V2:V3"); ws["V2"] = "Break Down"; ws["V4"] = "Operating Charge (MYR)"
 
-            # --- Apply colors (same as your working code) ---
+            # --- Color fills ---
             white_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
             light_green_fill = PatternFill(start_color="CCCC99", end_color="CCCC99", fill_type="solid")
             blue_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
@@ -566,24 +565,33 @@ if st.button("Download Cost Estimate Excel"):
             for cell in ["K2","K3","K4","L3","L4","M3","M4","N3","N4","O4","P4","Q4"]:
                 ws[cell].fill = blue_fill; ws[cell].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-            # --- Insert data ---
+            # --- Start inserting data ---
             current_row = 5
             first_data_row = current_row
 
-            # Insert special tools
+            # --- Insert special tool groups with red dividers ---
             for sc in used_special_cases:
                 ws[f"B{current_row}"] = f"{hole_size}in Section: {sc}"
                 ws[f"B{current_row}"].fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                 ws[f"B{current_row}"].alignment = Alignment(horizontal="center")
                 current_row += 1
-                for item in special_cases_section[sc]:
-                    item_row = df_tools_section[df_tools_section["Specification 1"]==item].iloc[0]
+
+                # Fetch the items from the original special_cases_map
+                items = []
+                if selected_service in special_cases_map:
+                    items = special_cases_map[selected_service].get(sc, [])
+                for item_name in items:
+                    df_row = df_tools_section[df_tools_section["Specification 1"]==item_name]
+                    if df_row.empty:
+                        continue
+                    item_row = df_row.iloc[0]
                     for col, val in zip(["B","C","D","E","F","G","H","I","J"], 
                                         [item_row["Reference"], item_row["Specification 1"], item_row["Specification 2"],
                                          item_row["Daily Rate"], item_row["Monthly Rate"], item_row["Depth Charge (per ft)"],
                                          item_row["Survey Charge (per ft)"], item_row["Flat Charge"], item_row["Hourly Charge"]]):
                         ws[f"{col}{current_row}"] = val
-                    # Operation Estimated columns
+
+                    # Operation Estimated & charges
                     safe_hole_size = hole_size.replace('"', '_').replace('.', '_')
                     qty = st.session_state.get(f"qty_{safe_hole_size}",0)
                     total_days = st.session_state.get(f"days_{safe_hole_size}",0)
@@ -610,8 +618,10 @@ if st.button("Download Cost Estimate Excel"):
                     ws[f"V{current_row}"] = operating_charge
                     current_row += 1
 
-            # Insert non-special tools
-            non_specials = df_tools_section[~df_tools_section["Specification 1"].isin(sum(special_cases_section.values(), []))]
+            # --- Insert non-special tools ---
+            non_specials = df_tools_section[~df_tools_section["Specification 1"].isin(
+                sum([special_cases_map[selected_service].get(sc, []) for sc in used_special_cases], [])
+            )]
             for _, item_row in non_specials.iterrows():
                 for col, val in zip(["B","C","D","E","F","G","H","I","J"], 
                                     [item_row["Reference"], item_row["Specification 1"], item_row["Specification 2"],
@@ -636,7 +646,7 @@ if st.button("Download Cost Estimate Excel"):
                 ws[f"V{current_row}"] = operating_charge
                 current_row += 1
 
-            # Grand total
+            # --- Grand total formula ---
             ws[f"T{first_data_row}"] = f"=SUM(S{first_data_row}:S{current_row-1})"
             ws[f"T{first_data_row}"].alignment = Alignment(horizontal="center")
 
@@ -647,6 +657,8 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+
 
 
 
