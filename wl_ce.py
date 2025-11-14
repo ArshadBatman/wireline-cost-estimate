@@ -353,6 +353,7 @@ if uploaded_file:
                 
                 # --- Assign sidebar inputs to table ---
                 calc_df["Quantity of Tools"] = quantity_tools
+                
                 # --- Well A Exceptions for Tool Quantities ---
                 if selected_well == "Well A":
                 
@@ -380,13 +381,19 @@ if uploaded_file:
                     else:
                         exceptions_map = None
                 
-                    # Apply overrides
                     if exceptions_map:
+                
+                        # Extract tool code (first part before extra details)
+                        calc_df["clean_spec"] = calc_df["Specification 1"].str.extract(r"^([^:]+:\s*[^:]+)")[0].str.strip()
+                
                         for spec_name, qty in exceptions_map.items():
                             calc_df.loc[
-                                calc_df["Specification 1"].str.strip().str.upper() == spec_name.upper(),
+                                calc_df["clean_spec"].str.upper() == spec_name.upper(),
                                 "Quantity of Tools"
                             ] = qty
+                
+                        calc_df.drop(columns=["clean_spec"], inplace=True)
+
 
                 calc_df["Total Days"] = total_days
                 calc_df["Total Months"] = total_months
@@ -719,6 +726,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
