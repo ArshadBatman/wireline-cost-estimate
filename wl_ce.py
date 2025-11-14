@@ -500,6 +500,16 @@ if uploaded_file:
                 section_total = updated_calc_df["Total (MYR)"].sum()
                 section_totals[hole_size] = section_total
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
+
+                # --- Identify special tools automatically ---
+                special_cases_section = {}
+                for charge_value in updated_calc_df["Total Flat Charge"].unique():
+                    if charge_value > 0:
+                        tools = updated_calc_df.loc[updated_calc_df["Total Flat Charge"] == charge_value, "Specification 1"].tolist()
+                        section_name = f"FlatCharge_{charge_value}"
+                        special_cases_section[section_name] = tools
+                used_special_cases = list(special_cases_section.keys())
+
                 
                 # Store for Excel download
                 all_calc_dfs_for_excel.append((hole_size, used_special_cases, updated_calc_df, special_cases_section))
@@ -671,6 +681,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
