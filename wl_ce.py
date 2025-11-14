@@ -584,10 +584,13 @@ if st.button("Download Cost Estimate Excel"):
             
             # Insert special tools
             for sc in used_special_cases:
-                ws[f"B{current_row}"] = f"{hole_size}in Section: {sc}"
+                # Get the first tool in this special case section
+                first_tool = special_cases_section[sc][0] if special_cases_section[sc] else sc
+                ws[f"B{current_row}"] = f'{hole_size}in Section: {first_tool}'
                 ws[f"B{current_row}"].fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
                 ws[f"B{current_row}"].alignment = Alignment(horizontal="center")
                 current_row += 1
+
                 
                 for item in special_cases_section[sc]:
                     item_rows = df_tools_section[df_tools_section["Specification 1"] == item]
@@ -696,6 +699,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
