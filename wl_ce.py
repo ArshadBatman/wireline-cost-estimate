@@ -542,13 +542,14 @@ if st.button("Download Cost Estimate Excel"):
             ws.merge_cells("G3:J3"); ws["G3"]="Operating Charge"
             ws["E4"]="Daily Rate"; ws["F4"]="Monthly Rate"; ws["G4"]="Depth Charge (per ft)"
             ws["H4"]="Survey Charge (per ft)"; ws["I4"]="Flat Charge"; ws["J4"]="Hourly Charge"
+
             ws.merge_cells("K2:Q2"); ws["K2"] = "Operation Estimated"
             ws.merge_cells("K3:K4"); ws["K3"] = "Quantity of Tools"
             ws.merge_cells("L3:M3"); ws["L3"] = "Rental Parameters"
             ws["L4"] = "Total Days"; ws["M4"] = "Total Months"
             ws.merge_cells("N3:Q3"); ws["N3"] = "Operating Parameters"
             ws["N4"] = "Total Depth (ft)"; ws["O4"] = "Total Survey (ft)"
-            ws["P4"] = "Total Flat Charge"; ws["Q4"] = "Total Hours"
+            ws["P4"] = "Total Flat Charge (ft)"; ws["Q4"] = "Total Hours"
             ws.merge_cells("R2:R4"); ws["R2"] = "Discount (%)"
             ws.merge_cells("S2:S4"); ws["S2"] = "Total (MYR)"
             ws.merge_cells("T2:T4"); ws["T2"] = "Grand Total Price (MYR)"
@@ -566,71 +567,37 @@ if st.button("Download Cost Estimate Excel"):
             for cell in ["K2","K3","K4","L3","L4","M3","M4","N3","N4","O4","P4","Q4"]:
                 ws[cell].fill = blue_fill; ws[cell].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-            # --- Insert data ---
+            # --- Insert data with inline red dividers ---
             current_row = 5
             first_data_row = current_row
+            inserted_dividers = set()
 
-            # --- Special tool groups ---
-            for sc in used_special_cases:
-                ws[f"B{current_row}"] = f"{hole_size}in Section: {sc}"
-                ws[f"B{current_row}"].fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                ws[f"B{current_row}"].alignment = Alignment(horizontal="center")
-                current_row += 1
+            for _, item_row in df_tools_section.iterrows():
+                # Identify special case this row belongs to
+                sc_name = None
+                for sc, items in flat_charge_sections.items():
+                    if item_row["Specification 1"] in items:
+                        sc_name = sc
+                        break
 
-                # Insert items for this special case from flat_charge_sections
-                items = flat_charge_sections.get(sc, [])
-                for item_name in items:
-                    df_row = df_tools_section[df_tools_section["Specification 1"] == item_name]
-                    if df_row.empty:
-                        continue
-                    item_row = df_row.iloc[0]
-
-                    # Basic info
-                    for col, val in zip(["B","C","D","E","F","G","H","I","J"], 
-                                        [item_row["Reference"], item_row["Specification 1"], item_row["Specification 2"],
-                                         item_row["Daily Rate"], item_row["Monthly Rate"], item_row["Depth Charge (per ft)"],
-                                         item_row["Survey Charge (per ft)"], item_row["Flat Charge"], item_row["Hourly Charge"]]):
-                        ws[f"{col}{current_row}"] = val
-
-                    # Operational quantities directly from calculated DataFrame
-                    ws[f"K{current_row}"] = item_row["Quantity of Tools"]
-                    ws[f"L{current_row}"] = item_row["Total Days"]
-                    ws[f"M{current_row}"] = item_row["Total Months"]
-                    ws[f"N{current_row}"] = item_row["Total Depth (ft)"]
-                    ws[f"O{current_row}"] = item_row["Total Survey (ft)"]
-                    ws[f"P{current_row}"] = item_row["Total Flat Charge"]
-                    ws[f"Q{current_row}"] = item_row["Total Hours"]
-                    ws[f"R{current_row}"] = item_row["Discount (%)"]
-
-                    # Charges
-                    rental_charge = item_row["Quantity of Tools"] * (
-                        item_row["Daily Rate"] * item_row["Total Days"] +
-                        item_row["Monthly Rate"] * item_row["Total Months"]
-                    ) * (1 - item_row["Discount (%)"]/100)
-
-                    operating_charge = (
-                        item_row["Depth Charge (per ft)"] * item_row["Total Depth (ft)"] +
-                        item_row["Survey Charge (per ft)"] * item_row["Total Survey (ft)"] +
-                        item_row["Flat Charge"] * item_row["Total Flat Charge"] +
-                        item_row["Hourly Charge"] * item_row["Total Hours"]
-                    ) * (1 - item_row["Discount (%)"]/100)
-
-                    ws[f"S{current_row}"] = rental_charge + operating_charge
-                    ws[f"U{current_row}"] = rental_charge
-                    ws[f"V{current_row}"] = operating_charge
-
+                # Insert red divider only once per special case
+                if sc_name and sc_name not in inserted_dividers:
+                    ws[f"B{current_row}"] = f'{hole_size}" in Section: {sc_name}'
+                    ws[f"B{current_row}"].fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                    ws[f"B{current_row}"].alignment = Alignment(horizontal="center")
                     current_row += 1
+                    inserted_dividers.add(sc_name)
 
-            # --- Non-special tools ---
-            non_specials = df_tools_section[~df_tools_section["Specification 1"].isin(sum(flat_charge_sections.values(), []))]
-            for _, item_row in non_specials.iterrows():
-                for col, val in zip(["B","C","D","E","F","G","H","I","J"], 
-                                    [item_row["Reference"], item_row["Specification 1"], item_row["Specification 2"],
-                                     item_row["Daily Rate"], item_row["Monthly Rate"], item_row["Depth Charge (per ft)"],
-                                     item_row["Survey Charge (per ft)"], item_row["Flat Charge"], item_row["Hourly Charge"]]):
+                # Insert tool row
+                for col, val in zip(
+                    ["B","C","D","E","F","G","H","I","J"], 
+                    [item_row["Reference"], item_row["Specification 1"], item_row["Specification 2"],
+                     item_row["Daily Rate"], item_row["Monthly Rate"], item_row["Depth Charge (per ft)"],
+                     item_row["Survey Charge (per ft)"], item_row["Flat Charge"], item_row["Hourly Charge"]]
+                ):
                     ws[f"{col}{current_row}"] = val
 
-                # Operational quantities from calculated DataFrame
+                # Operational columns
                 ws[f"K{current_row}"] = item_row["Quantity of Tools"]
                 ws[f"L{current_row}"] = item_row["Total Days"]
                 ws[f"M{current_row}"] = item_row["Total Months"]
@@ -659,7 +626,7 @@ if st.button("Download Cost Estimate Excel"):
 
                 current_row += 1
 
-            # --- Grand total ---
+            # Grand total
             ws[f"T{first_data_row}"] = f"=SUM(S{first_data_row}:S{current_row-1})"
             ws[f"T{first_data_row}"].alignment = Alignment(horizontal="center")
 
@@ -670,6 +637,8 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+
 
 
 
