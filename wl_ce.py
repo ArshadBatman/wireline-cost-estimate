@@ -353,6 +353,41 @@ if uploaded_file:
                 
                 # --- Assign sidebar inputs to table ---
                 calc_df["Quantity of Tools"] = quantity_tools
+                # --- Well A Exceptions for Tool Quantities ---
+                if selected_well == "Well A":
+                
+                    # Maps: Specification 1 → Quantity
+                    exceptions_1225 = {
+                        "FP18: FPS_SAMP": 11,
+                        "FP19: FPS_SPHA": 4,
+                        "FP23: FPS_TRA": 4,
+                        "FP24: FPS_TRK": 1,
+                        "FP33: FPS_FCHA_6": 1,
+                        "FP34: FPS_FCHA_7": 1,
+                    }
+                
+                    exceptions_85 = {
+                        "FP18: FPS_SAMP": 5,
+                        "FP19: FPS_SPHA": 2,
+                        "FP23: FPS_TRA": 2,
+                    }
+                
+                    # Determine which exception map to apply
+                    if hole_size == '12.25"':
+                        exceptions_map = exceptions_1225
+                    elif hole_size == '8.5"':
+                        exceptions_map = exceptions_85
+                    else:
+                        exceptions_map = None
+                
+                    # Apply overrides
+                    if exceptions_map:
+                        for spec_name, qty in exceptions_map.items():
+                            calc_df.loc[
+                                calc_df["Specification 1"].str.strip().str.upper() == spec_name.upper(),
+                                "Quantity of Tools"
+                            ] = qty
+
                 calc_df["Total Days"] = total_days
                 calc_df["Total Months"] = total_months
                 calc_df["Total Depth (ft)"] = total_depth
@@ -684,6 +719,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
