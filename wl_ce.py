@@ -516,24 +516,20 @@ if uploaded_file:
 if st.button("Download Cost Estimate Excel"):
     output = BytesIO()
 
-    if not all_calc_dfs_for_excel:
-        # If no data, create a placeholder sheet
-        placeholder_df = pd.DataFrame([{"Reference": "N/A", "Specification 1": "N/A"}])
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            placeholder_df.to_excel(writer, sheet_name="No Data", index=False)
-    else:
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        # Step 0: Create a temporary visible sheet
+        pd.DataFrame([{"Dummy": "Placeholder"}]).to_excel(writer, sheet_name="TempSheet", index=False)
+        
+        if all_calc_dfs_for_excel:
             for hole_size, used_special_cases, df_tools_section, special_cases_section in all_calc_dfs_for_excel:
                 sheet_name = f'{hole_size}" Hole'
-
-                # Ensure non-empty DataFrame
                 if df_tools_section.empty:
-                    df_tools_section = pd.DataFrame([{"Reference": "N/A", "Specification 1": "N/A"}])
-
-                # Write DataFrame to Excel (creates visible sheet)
+                    df_tools_section = pd.DataFrame([{"Reference":"N/A","Specification 1":"N/A"}])
                 df_tools_section.to_excel(writer, sheet_name=sheet_name, index=False, startrow=4)
                 ws = writer.sheets[sheet_name]
 
+                # --- Your header formatting, coloring, and row insertion here ---
+                # (Insert special tools and non-special tools logic as before)
                 # --- Header formatting ---
                 ws.merge_cells("B2:B4"); ws["B2"]="Reference"
                 ws.merge_cells("C2:C4"); ws["C2"]="Specification 1"
@@ -684,6 +680,12 @@ if st.button("Download Cost Estimate Excel"):
                 ws[f"T{first_data_row}"] = f"=SUM(S{first_data_row}:S{current_row-1})"
                 ws[f"T{first_data_row}"].alignment = Alignment(horizontal="center")
 
+        
+        # Step 1: Remove temporary sheet if there is at least 1 real sheet
+        if "TempSheet" in writer.sheets and len(writer.sheets) > 1:
+            std_wb = writer.book
+            std_wb.remove(std_wb["TempSheet"])
+
     output.seek(0)
     st.download_button(
         "Download Cost Estimate Excel",
@@ -691,7 +693,6 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
 
 
 
