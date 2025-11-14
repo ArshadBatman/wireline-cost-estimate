@@ -517,24 +517,14 @@ if uploaded_file:
 if st.button("Download Cost Estimate Excel"):
     output = BytesIO()
 
-    # --- Ensure at least one sheet exists ---
-    if not all_calc_dfs_for_excel:
-        all_calc_dfs_for_excel.append(("Placeholder", pd.DataFrame([{"Reference":"N/A","Specification 1":"N/A"}])))
-
-    # --- Write Excel ---
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        wb = writer.book
+
         for hole_size, df_tools_section in all_calc_dfs_for_excel:
             sheet_name = f'{hole_size}" Hole'
+            ws = wb.create_sheet(title=sheet_name)
 
-            # If DataFrame empty, create placeholder
-            if df_tools_section.empty:
-                df_tools_section = pd.DataFrame([{"Reference":"N/A","Specification 1":"N/A"}])
-
-            # Write DataFrame starting from row 5
-            df_tools_section.to_excel(writer, sheet_name=sheet_name, index=False, startrow=4)
-            ws = writer.sheets[sheet_name]
-
-            # --- Header formatting ---
+            # --- Header rows ---
             ws.merge_cells("B2:B4"); ws["B2"]="Reference"
             ws.merge_cells("C2:C4"); ws["C2"]="Specification 1"
             ws.merge_cells("D2:D4"); ws["D2"]="Specification 2"
@@ -543,20 +533,20 @@ if st.button("Download Cost Estimate Excel"):
             ws.merge_cells("G3:J3"); ws["G3"]="Operating Charge"
             ws["E4"]="Daily Rate"; ws["F4"]="Monthly Rate"; ws["G4"]="Depth Charge (per ft)"
             ws["H4"]="Survey Charge (per ft)"; ws["I4"]="Flat Charge"; ws["J4"]="Hourly Charge"
-            ws.merge_cells("K2:Q2"); ws["K2"]="Operation Estimated"
-            ws.merge_cells("K3:K4"); ws["K3"]="Quantity of Tools"
-            ws.merge_cells("L3:M3"); ws["L3"]="Rental Parameters"
-            ws["L4"]="Total Days"; ws["M4"]="Total Months"
-            ws.merge_cells("N3:Q3"); ws["N3"]="Operating Parameters"
-            ws["N4"]="Total Depth (ft)"; ws["O4"]="Total Survey (ft)"
-            ws["P4"]="Total Flat Charge (ft)"; ws["Q4"]="Total Hours"
-            ws.merge_cells("R2:R4"); ws["R2"]="Discount (%)"
-            ws.merge_cells("S2:S4"); ws["S2"]="Total (MYR)"
-            ws.merge_cells("T2:T4"); ws["T2"]="Grand Total Price (MYR)"
-            ws.merge_cells("U2:U3"); ws["U2"]="Break Down"; ws["U4"]="Rental Charge (MYR)"
-            ws.merge_cells("V2:V3"); ws["V2"]="Break Down"; ws["V4"]="Operating Charge (MYR)"
+            ws.merge_cells("K2:Q2"); ws["K2"] = "Operation Estimated"
+            ws.merge_cells("K3:K4"); ws["K3"] = "Quantity of Tools"
+            ws.merge_cells("L3:M3"); ws["L3"] = "Rental Parameters"
+            ws["L4"] = "Total Days"; ws["M4"] = "Total Months"
+            ws.merge_cells("N3:Q3"); ws["N3"] = "Operating Parameters"
+            ws["N4"] = "Total Depth (ft)"; ws["O4"] = "Total Survey (ft)"
+            ws["P4"] = "Total Flat Charge (ft)"; ws["Q4"] = "Total Hours"
+            ws.merge_cells("R2:R4"); ws["R2"] = "Discount (%)"
+            ws.merge_cells("S2:S4"); ws["S2"] = "Total (MYR)"
+            ws.merge_cells("T2:T4"); ws["T2"] = "Grand Total Price (MYR)"
+            ws.merge_cells("U2:U3"); ws["U2"] = "Break Down"; ws["U4"] = "Rental Charge (MYR)"
+            ws.merge_cells("V2:V3"); ws["V2"] = "Break Down"; ws["V4"] = "Operating Charge (MYR)"
 
-            # --- Colors ---
+            # --- Apply colors ---
             white_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
             light_green_fill = PatternFill(start_color="CCCC99", end_color="CCCC99", fill_type="solid")
             blue_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
@@ -573,36 +563,55 @@ if st.button("Download Cost Estimate Excel"):
             ws["U4"].fill = ws["V4"].fill = light_green_fill
             ws["U4"].alignment = ws["V4"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-            # --- Insert tool rows ---
-            start_row = 5
-            for i, row in df_tools_section.iterrows():
-                ws[f"B{start_row}"] = row.get("Reference","")
-                ws[f"C{start_row}"] = row.get("Specification 1","")
-                ws[f"D{start_row}"] = row.get("Specification 2","")
-                ws[f"E{start_row}"] = row.get("Daily Rate",0)
-                ws[f"F{start_row}"] = row.get("Monthly Rate",0)
-                ws[f"G{start_row}"] = row.get("Depth Charge (per ft)",0)
-                ws[f"H{start_row}"] = row.get("Survey Charge (per ft)",0)
-                ws[f"I{start_row}"] = row.get("Flat Charge",0)
-                ws[f"J{start_row}"] = row.get("Hourly Charge",0)
-                ws[f"K{start_row}"] = row.get("Quantity of Tools",0)
-                ws[f"L{start_row}"] = row.get("Total Days",0)
-                ws[f"M{start_row}"] = row.get("Total Months",0)
-                ws[f"N{start_row}"] = row.get("Total Depth (ft)",0)
-                ws[f"O{start_row}"] = row.get("Total Survey (ft)",0)
-                ws[f"P{start_row}"] = row.get("Total Flat Charge",0)
-                ws[f"Q{start_row}"] = row.get("Total Hours",0)
-                ws[f"R{start_row}"] = row.get("Discount (%)",0)
-                ws[f"S{start_row}"] = row.get("Total (MYR)",0)
-                ws[f"U{start_row}"] = row.get("Rental Charge",0)
-                ws[f"V{start_row}"] = row.get("Operating Charge",0)
-                start_row += 1
+            # --- Insert data ---
+            current_row = 5
+            first_data_row = current_row
 
-            # --- Grand total ---
-            ws[f"T5"] = f"=SUM(S5:S{start_row-1})"
-            ws[f"T5"].alignment = Alignment(horizontal="center")
+            for _, item_row in df_tools_section.iterrows():
+                ws[f"B{current_row}"] = item_row.get("Reference","")
+                ws[f"C{current_row}"] = item_row.get("Specification 1","")
+                ws[f"D{current_row}"] = item_row.get("Specification 2","")
+                ws[f"E{current_row}"] = item_row.get("Daily Rate",0)
+                ws[f"F{current_row}"] = item_row.get("Monthly Rate",0)
+                ws[f"G{current_row}"] = item_row.get("Depth Charge (per ft)",0)
+                ws[f"H{current_row}"] = item_row.get("Survey Charge (per ft)",0)
+                ws[f"I{current_row}"] = item_row.get("Flat Charge",0)
+                ws[f"J{current_row}"] = item_row.get("Hourly Charge",0)
 
-    # --- Download button ---
+                # --- Operation Estimated values from session_state ---
+                safe_hole_size = hole_size.replace('"','_').replace('.','_')
+                qty = st.session_state.get(f"qty_{safe_hole_size}",0)
+                total_days = st.session_state.get(f"days_{safe_hole_size}",0)
+                total_months = st.session_state.get(f"months_{safe_hole_size}",0)
+                total_depth = st.session_state.get(f"depth_{safe_hole_size}",0)
+                total_survey = st.session_state.get(f"survey_{safe_hole_size}",0)
+                total_hours = st.session_state.get(f"hours_{safe_hole_size}",0)
+                discount_pct = st.session_state.get(f"disc_{safe_hole_size}",0)
+
+                ws[f"K{current_row}"] = qty
+                ws[f"L{current_row}"] = total_days
+                ws[f"M{current_row}"] = total_months
+                ws[f"N{current_row}"] = total_depth
+                ws[f"O{current_row}"] = total_survey
+                ws[f"P{current_row}"] = item_row.get("Total Flat Charge",0)
+                ws[f"Q{current_row}"] = total_hours
+                ws[f"R{current_row}"] = discount_pct * 100
+
+                rental_charge = qty * ((item_row.get("Daily Rate",0)*total_days) + (item_row.get("Monthly Rate",0)*total_months))*(1-discount_pct)
+                total_flat = item_row.get("Total Flat Charge",0)
+                operating_charge = ((item_row.get("Depth Charge (per ft)",0)*total_depth) + (item_row.get("Survey Charge (per ft)",0)*total_survey) + (item_row.get("Flat Charge",0)*total_flat) + (item_row.get("Hourly Charge",0)*total_hours)) * (1-discount_pct)
+                total_myr = rental_charge + operating_charge
+
+                ws[f"S{current_row}"] = total_myr
+                ws[f"U{current_row}"] = rental_charge
+                ws[f"V{current_row}"] = operating_charge
+
+                current_row += 1
+
+            # --- Grand Total formula ---
+            ws[f"T{first_data_row}"] = f"=SUM(S{first_data_row}:S{current_row-1})"
+            ws[f"T{first_data_row}"].alignment = Alignment(horizontal="center")
+
     output.seek(0)
     st.download_button(
         "Download Cost Estimate Excel",
