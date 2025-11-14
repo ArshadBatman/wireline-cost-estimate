@@ -626,37 +626,50 @@ if st.button("Download Cost Estimate Excel"):
             for _, item_row in non_specials.iterrows():
                 for col, val in zip(["B","C","D","E","F","G","H","I","J"], 
                                     [item_row["Reference"], item_row["Specification 1"], item_row["Specification 2"],
-                                     item_row["Daily Rate"], item_row["Monthly Rate"], item_row["Depth Charge (pe]()_
+                                     item_row["Daily Rate"], item_row["Monthly Rate"], item_row["Depth Charge (per ft)"],
+                                     item_row["Survey Charge (per ft)"], item_row["Flat Charge"], item_row["Hourly Charge"]]):
+                    ws[f"{col}{current_row}"] = val
 
+                # Operational quantities from calculated DataFrame
+                ws[f"K{current_row}"] = item_row["Quantity of Tools"]
+                ws[f"L{current_row}"] = item_row["Total Days"]
+                ws[f"M{current_row}"] = item_row["Total Months"]
+                ws[f"N{current_row}"] = item_row["Total Depth (ft)"]
+                ws[f"O{current_row}"] = item_row["Total Survey (ft)"]
+                ws[f"P{current_row}"] = item_row["Total Flat Charge"]
+                ws[f"Q{current_row}"] = item_row["Total Hours"]
+                ws[f"R{current_row}"] = item_row["Discount (%)"]
 
+                # Charges
+                rental_charge = item_row["Quantity of Tools"] * (
+                    item_row["Daily Rate"] * item_row["Total Days"] +
+                    item_row["Monthly Rate"] * item_row["Total Months"]
+                ) * (1 - item_row["Discount (%)"]/100)
 
+                operating_charge = (
+                    item_row["Depth Charge (per ft)"] * item_row["Total Depth (ft)"] +
+                    item_row["Survey Charge (per ft)"] * item_row["Total Survey (ft)"] +
+                    item_row["Flat Charge"] * item_row["Total Flat Charge"] +
+                    item_row["Hourly Charge"] * item_row["Total Hours"]
+                ) * (1 - item_row["Discount (%)"]/100)
 
+                ws[f"S{current_row}"] = rental_charge + operating_charge
+                ws[f"U{current_row}"] = rental_charge
+                ws[f"V{current_row}"] = operating_charge
 
+                current_row += 1
 
+            # --- Grand total ---
+            ws[f"T{first_data_row}"] = f"=SUM(S{first_data_row}:S{current_row-1})"
+            ws[f"T{first_data_row}"].alignment = Alignment(horizontal="center")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    output.seek(0)
+    st.download_button(
+        "Download Cost Estimate Excel",
+        data=output,
+        file_name="Cost_Estimate.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 
 
