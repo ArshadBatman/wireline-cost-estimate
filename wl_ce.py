@@ -527,17 +527,36 @@ if uploaded_file:
 if st.button("Download Cost Estimate Excel"):
     output = BytesIO()
 
+    
+        # ----------------- robust grouped Excel writing (drop-in) -----------------
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        for hole_size, used_special_cases, df_tools_section, special_cases_section in all_calc_dfs_for_excel:
-
+        for entry in all_calc_dfs_for_excel:
+            # Expecting 4-element tuple: (hole_size, used_special_cases, df_tools_section, special_cases_section)
+            try:
+                hole_size, used_special_cases, df_tools_section, special_cases_section = entry
+            except Exception:
+                # try to be forgiving if older 2-tuple was stored
+                if isinstance(entry, tuple) and len(entry) == 2:
+                    hole_size, df_tools_section = entry
+                    used_special_cases = []
+                    special_cases_section = {}
+                else:
+                    # skip invalid entry
+                    continue
+    
+            # Ensure df exists
+            if df_tools_section is None or (isinstance(df_tools_section, pd.DataFrame) and df_tools_section.empty):
+                df_tools_section = pd.DataFrame([{"Reference": "", "Specification 1": "", "Specification 2": ""}])
+    
             sheet_name = f'{hole_size}" Hole'
-
-            wb = writer.book
-            ws = wb.create_sheet(title=sheet_name)
-
-            safe_hole_size = hole_size.replace('.', '_').replace('"', '')
-
-            # --- Header Rows ---
+            # create visible sheet (avoid hidden workbook error)
+            if sheet_name in writer.book.sheetnames:
+                ws = writer.book[sheet_name]
+            else:
+                ws = writer.book.create_sheet(title=sheet_name)
+            writer.sheets[sheet_name] = ws
+    
+            # --- Header rows (same as your format) ---
             ws.merge_cells("B2:B4"); ws["B2"] = "Reference"
             ws.merge_cells("C2:C4"); ws["C2"] = "Specification 1"
             ws.merge_cells("D2:D4"); ws["D2"] = "Specification 2"
@@ -545,74 +564,79 @@ if st.button("Download Cost Estimate Excel"):
             ws.merge_cells("E3:F3"); ws["E3"] = "Rental Price"
             ws.merge_cells("G3:J3"); ws["G3"] = "Operating Charge"
             ws["E4"] = "Daily Rate"; ws["F4"] = "Monthly Rate"
-            ws["G4"] = "Depth Charge (per ft)"
-            ws["H4"] = "Survey Charge (per ft)"
+            ws["G4"] = "Depth Charge (per ft)"; ws["H4"] = "Survey Charge (per ft)"
             ws["I4"] = "Flat Charge"; ws["J4"] = "Hourly Charge"
-
             ws.merge_cells("K2:Q2"); ws["K2"] = "Operation Estimated"
             ws.merge_cells("K3:K4"); ws["K3"] = "Quantity of Tools"
             ws.merge_cells("L3:M3"); ws["L3"] = "Rental Parameters"
             ws["L4"] = "Total Days"; ws["M4"] = "Total Months"
-
             ws.merge_cells("N3:Q3"); ws["N3"] = "Operating Parameters"
-            ws["N4"] = "Total Depth (ft)"
-            ws["O4"] = "Total Survey (ft)"
-            ws["P4"] = "Total Flat Charge (ft)"
-            ws["Q4"] = "Total Hours"
-
+            ws["N4"] = "Total Depth (ft)"; ws["O4"] = "Total Survey (ft)"
+            ws["P4"] = "Total Flat Charge (ft)"; ws["Q4"] = "Total Hours"
             ws.merge_cells("R2:R4"); ws["R2"] = "Discount (%)"
             ws.merge_cells("S2:S4"); ws["S2"] = "Total (MYR)"
             ws.merge_cells("T2:T4"); ws["T2"] = "Grand Total Price (MYR)"
             ws.merge_cells("U2:U3"); ws["U2"] = "Break Down"; ws["U4"] = "Rental Charge (MYR)"
             ws.merge_cells("V2:V3"); ws["V2"] = "Break Down"; ws["V4"] = "Operating Charge (MYR)"
-
-            # --- Colors ---
+    
+            # colors/align
             white_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
             light_green_fill = PatternFill(start_color="CCCC99", end_color="CCCC99", fill_type="solid")
             blue_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-
-            # White headers
-            white_cells = ["B2","B3","B4","C2","C3","C4","D2","D3","D4",
-                           "R2","R3","R4","S2","S3","S4","T2","T3","T4","U2","U3","V2","V3"]
-            for cell in white_cells:
+            for cell in ["B2","B3","B4","C2","C3","C4","D2","D3","D4","R2","R3","R4","S2","S3","S4","T2","T3","T4","U2","U3","V2","V3"]:
                 ws[cell].fill = white_fill
                 ws[cell].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-
-            # Light green cells
-            lg_cells = ["E2","E3","E4","F2","F3","F4",
-                        "G2","G3","G4","H4","I4","J4","U4","V4"]
-            for cell in lg_cells:
+            for cell in ["E2","E3","E4","F2","F3","F4","G2","G3","G4","H4","I4","J4"]:
                 ws[cell].fill = light_green_fill
                 ws[cell].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-
-            # Blue cells
-            blue_cells = ["K2","K3","K4","L3","L4","M3","M4",
-                          "N3","N4","O4","P4","Q4"]
-            for cell in blue_cells:
+            for cell in ["K2","K3","K4","L3","L4","M3","M4","N3","N4","O4","P4","Q4"]:
                 ws[cell].fill = blue_fill
                 ws[cell].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-
-            # ================================
-            # Start Writing Data
-            # ================================
+            ws["U4"].fill = ws["V4"].fill = light_green_fill
+            ws["U4"].alignment = ws["V4"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    
+            # --- Now write grouped data in correct sequence ---
             current_row = 5
             first_data_row = current_row
-            
-            # --- 1) Write special-case groups IN ORDER ---
-            for group_name, tools_list in special_cases_section.items():
-            
-                # Group header row
+    
+            # clean used_special_cases: if it's a dict accidentally passed, convert to list of keys
+            if isinstance(used_special_cases, dict):
+                used_special_cases_list = list(used_special_cases.keys())
+            else:
+                used_special_cases_list = list(used_special_cases)
+    
+            # If special_cases_section is empty, try to use global special_cases_map (if available in scope)
+            # and build a local mapping to avoid grouping errors.
+            group_map = {}
+            if isinstance(special_cases_section, dict) and special_cases_section:
+                group_map = special_cases_section.copy()
+            else:
+                # try to fallback: if a top-level special_cases_map exists, use that and filter groups used
+                try:
+                    # note: this uses name special_cases_map from your script; if not present, ignore
+                    group_map = {g: special_cases_map.get(g, []) for g in used_special_cases_list if g in special_cases_map}
+                except Exception:
+                    group_map = {}
+    
+            # 1) write groups in the order they appear in used_special_cases_list
+            for group_name in used_special_cases_list:
+                tools_list = group_map.get(group_name, [])
+                # if tools_list is empty but group_name appears directly as a key in df (rare), still write header
+                # write header row (group)
                 ws[f"B{current_row}"] = group_name
-                ws[f"B{current_row}"].alignment = Alignment(horizontal="left", vertical="center")
                 ws[f"B{current_row}"].fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+                ws[f"B{current_row}"].alignment = Alignment(horizontal="left", vertical="center")
                 current_row += 1
-            
-                # Each tool inside the group
-                for tool_name in tools_list:
-                    df_rows = df_tools_section[df_tools_section["Specification 1"] == tool_name]
-                    for _, item_row in df_rows.iterrows():
-            
-                        # Fill columns
+    
+                # write each tool in that group in the order given by tools_list
+                for tool_code in tools_list:
+                    # find matching rows in df_tools_section (allow exact match)
+                    matches = df_tools_section[df_tools_section["Specification 1"] == tool_code]
+                    if matches.empty:
+                        # sometimes df stores a variant (space differences), try case-insensitive contains
+                        matches = df_tools_section[df_tools_section["Specification 1"].str.upper().str.contains(tool_code.upper(), na=False)]
+                    for _, item_row in matches.iterrows():
+                        # fill row
                         ws[f"B{current_row}"] = item_row.get("Reference","")
                         ws[f"C{current_row}"] = item_row.get("Specification 1","")
                         ws[f"D{current_row}"] = item_row.get("Specification 2","")
@@ -622,17 +646,16 @@ if st.button("Download Cost Estimate Excel"):
                         ws[f"H{current_row}"] = item_row.get("Survey Charge (per ft)",0)
                         ws[f"I{current_row}"] = item_row.get("Flat Charge",0)
                         ws[f"J{current_row}"] = item_row.get("Hourly Charge",0)
-            
-                        # Session values
-                        qty = st.session_state.get(f"qty_{safe_hole_size}",0)
-                        total_days = st.session_state.get(f"days_{safe_hole_size}",0)
-                        total_months = st.session_state.get(f"months_{safe_hole_size}",0)
-                        total_depth = st.session_state.get(f"depth_{safe_hole_size}",0)
-                        total_survey = st.session_state.get(f"survey_{safe_hole_size}",0)
-                        total_hours = st.session_state.get(f"hours_{safe_hole_size}",0)
-                        discount_pct = st.session_state.get(f"disc_{safe_hole_size}",0)
-            
-                        # Operation Estimated
+    
+                        safe_hole_size = hole_size.replace('"','_').replace('.','_')
+                        qty = st.session_state.get(f"qty_{hole_size}", st.session_state.get(f"qty_{safe_hole_size}", 0))
+                        total_days = st.session_state.get(f"days_{hole_size}", st.session_state.get(f"days_{safe_hole_size}", 0))
+                        total_months = st.session_state.get(f"months_{hole_size}", st.session_state.get(f"months_{safe_hole_size}", 0))
+                        total_depth = st.session_state.get(f"depth_{hole_size}", st.session_state.get(f"depth_{safe_hole_size}", 0))
+                        total_survey = st.session_state.get(f"survey_{hole_size}", st.session_state.get(f"survey_{safe_hole_size}", 0))
+                        total_hours = st.session_state.get(f"hours_{hole_size}", st.session_state.get(f"hours_{safe_hole_size}", 0))
+                        discount_pct = st.session_state.get(f"disc_{hole_size}", st.session_state.get(f"disc_{safe_hole_size}", 0))
+    
                         ws[f"K{current_row}"] = qty
                         ws[f"L{current_row}"] = total_days
                         ws[f"M{current_row}"] = total_months
@@ -641,8 +664,7 @@ if st.button("Download Cost Estimate Excel"):
                         ws[f"P{current_row}"] = item_row.get("Total Flat Charge",0)
                         ws[f"Q{current_row}"] = total_hours
                         ws[f"R{current_row}"] = discount_pct * 100
-            
-                        # Charges
+    
                         rental_charge = qty * ((item_row.get("Daily Rate",0)*total_days) + (item_row.get("Monthly Rate",0)*total_months))*(1-discount_pct)
                         total_flat = item_row.get("Total Flat Charge",0)
                         operating_charge = ((item_row.get("Depth Charge (per ft)",0)*total_depth) +
@@ -650,22 +672,18 @@ if st.button("Download Cost Estimate Excel"):
                                             (item_row.get("Flat Charge",0)*total_flat) +
                                             (item_row.get("Hourly Charge",0)*total_hours))*(1-discount_pct)
                         total_myr = rental_charge + operating_charge
-            
+    
                         ws[f"S{current_row}"] = total_myr
                         ws[f"U{current_row}"] = rental_charge
                         ws[f"V{current_row}"] = operating_charge
-            
+    
                         current_row += 1
-            
-            
-            # --- 2) Insert NORMAL (non-special-case) tools ---
-            used_items = set(sum(special_cases_section.values(), []))
-            
-            normal_tools = df_tools_section[
-                ~df_tools_section["Specification 1"].isin(used_items)
-            ]
-            
-            for _, item_row in normal_tools.iterrows():
+    
+            # 2) write normal (non-grouped) tools in original order
+            grouped_codes = set(sum([v if isinstance(v, list) else [] for v in group_map.values()], []))
+            normal_df = df_tools_section[~df_tools_section["Specification 1"].isin(grouped_codes)]
+    
+            for _, item_row in normal_df.iterrows():
                 ws[f"B{current_row}"] = item_row.get("Reference","")
                 ws[f"C{current_row}"] = item_row.get("Specification 1","")
                 ws[f"D{current_row}"] = item_row.get("Specification 2","")
@@ -675,15 +693,16 @@ if st.button("Download Cost Estimate Excel"):
                 ws[f"H{current_row}"] = item_row.get("Survey Charge (per ft)",0)
                 ws[f"I{current_row}"] = item_row.get("Flat Charge",0)
                 ws[f"J{current_row}"] = item_row.get("Hourly Charge",0)
-            
-                qty = st.session_state.get(f"qty_{safe_hole_size}",0)
-                total_days = st.session_state.get(f"days_{safe_hole_size}",0)
-                total_months = st.session_state.get(f"months_{safe_hole_size}",0)
-                total_depth = st.session_state.get(f"depth_{safe_hole_size}",0)
-                total_survey = st.session_state.get(f"survey_{safe_hole_size}",0)
-                total_hours = st.session_state.get(f"hours_{safe_hole_size}",0)
-                discount_pct = st.session_state.get(f"disc_{safe_hole_size}",0)
-            
+    
+                safe_hole_size = hole_size.replace('"','_').replace('.','_')
+                qty = st.session_state.get(f"qty_{hole_size}", st.session_state.get(f"qty_{safe_hole_size}", 0))
+                total_days = st.session_state.get(f"days_{hole_size}", st.session_state.get(f"days_{safe_hole_size}", 0))
+                total_months = st.session_state.get(f"months_{hole_size}", st.session_state.get(f"months_{safe_hole_size}", 0))
+                total_depth = st.session_state.get(f"depth_{hole_size}", st.session_state.get(f"depth_{safe_hole_size}", 0))
+                total_survey = st.session_state.get(f"survey_{hole_size}", st.session_state.get(f"survey_{safe_hole_size}", 0))
+                total_hours = st.session_state.get(f"hours_{hole_size}", st.session_state.get(f"hours_{safe_hole_size}", 0))
+                discount_pct = st.session_state.get(f"disc_{hole_size}", st.session_state.get(f"disc_{safe_hole_size}", 0))
+    
                 ws[f"K{current_row}"] = qty
                 ws[f"L{current_row}"] = total_days
                 ws[f"M{current_row}"] = total_months
@@ -692,7 +711,7 @@ if st.button("Download Cost Estimate Excel"):
                 ws[f"P{current_row}"] = item_row.get("Total Flat Charge",0)
                 ws[f"Q{current_row}"] = total_hours
                 ws[f"R{current_row}"] = discount_pct * 100
-            
+    
                 rental_charge = qty * ((item_row.get("Daily Rate",0)*total_days) + (item_row.get("Monthly Rate",0)*total_months))*(1-discount_pct)
                 total_flat = item_row.get("Total Flat Charge",0)
                 operating_charge = ((item_row.get("Depth Charge (per ft)",0)*total_depth) +
@@ -700,17 +719,20 @@ if st.button("Download Cost Estimate Excel"):
                                     (item_row.get("Flat Charge",0)*total_flat) +
                                     (item_row.get("Hourly Charge",0)*total_hours))*(1-discount_pct)
                 total_myr = rental_charge + operating_charge
-            
+    
                 ws[f"S{current_row}"] = total_myr
                 ws[f"U{current_row}"] = rental_charge
                 ws[f"V{current_row}"] = operating_charge
-            
+    
                 current_row += 1
-
-
-            # === Grand Total ===
-            ws[f"T{first_data_row}"] = f"=SUM(S{first_data_row}:S{current_row-1})"
-            ws[f"T{first_data_row}"].alignment = Alignment(horizontal="center")
+    
+            # Grand total cell
+            if current_row > first_data_row:
+                ws[f"T{first_data_row}"] = f"=SUM(S{first_data_row}:S{current_row-1})"
+                ws[f"T{first_data_row}"].alignment = Alignment(horizontal="center")
+    
+    # end with pd.ExcelWriter(...)
+    # then output.seek(0) and st.download_button as before
 
     output.seek(0)
     st.download_button(
@@ -719,6 +741,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
