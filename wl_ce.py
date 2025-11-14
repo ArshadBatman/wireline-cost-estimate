@@ -336,65 +336,61 @@ if uploaded_file:
                 st.subheader(f"Selected Data - Package {selected_package}, Service {selected_service}")
                 st.dataframe(display_df.style.apply(highlight_divider, axis=1))
 
-                # Calculatiom
+                # --- Calculation
                 # Build Calculated Cost table from display_df
-
                 calc_df = display_df.copy()
-        
+                
                 numeric_cols = [
                     "Quantity of Tools", "Total Days", "Total Months", "Total Depth (ft)",
                     "Total Survey (ft)", "Total Hours", "Discount (%)", "Daily Rate",
                     "Monthly Rate", "Depth Charge (per ft)", "Flat Charge", "Survey Charge (per ft)",
                     "Hourly Charge", "Total Flat Charge"
                 ]
+                
+                # Ensure all numeric columns exist
                 for col in numeric_cols:
                     if col not in calc_df.columns:
                         calc_df[col] = 0
                 
-                # --- Assign sidebar inputs to table ---
-                calc_df["Quantity of Tools"] = quantity_tools
-                
                 # --- Well A Exceptions for Tool Quantities ---
+                exceptions_1225 = {
+                    "FP18: FPS_SAMP": 11,
+                    "FP19: FPS_SPHA": 4,
+                    "FP23: FPS_TRA": 4,
+                    "FP24: FPS_TRK": 1,
+                    "FP33: FPS_FCHA_6": 1,
+                    "FP34: FPS_FCHA_7": 1,
+                }
+                
+                exceptions_85 = {
+                    "FP18: FPS_SAMP": 5,
+                    "FP19: FPS_SPHA": 2,
+                    "FP23: FPS_TRA": 2,
+                }
+                
+                exceptions_map = None
                 if selected_well == "Well A":
-                
-                    # Maps: Specification 1 → Quantity
-                    exceptions_1225 = {
-                        "FP18: FPS_SAMP": 11,
-                        "FP19: FPS_SPHA": 4,
-                        "FP23: FPS_TRA": 4,
-                        "FP24: FPS_TRK": 1,
-                        "FP33: FPS_FCHA_6": 1,
-                        "FP34: FPS_FCHA_7": 1,
-                    }
-                
-                    exceptions_85 = {
-                        "FP18: FPS_SAMP": 5,
-                        "FP19: FPS_SPHA": 2,
-                        "FP23: FPS_TRA": 2,
-                    }
-                
-                    # Determine which exception map to apply
                     if hole_size == '12.25"':
                         exceptions_map = exceptions_1225
                     elif hole_size == '8.5"':
                         exceptions_map = exceptions_85
-                    else:
-                        exceptions_map = None
                 
-                    if exceptions_map:
+                # Apply sidebar quantity only if no exception applies
+                if not exceptions_map:
+                    calc_df["Quantity of Tools"] = quantity_tools
                 
-                        # Extract tool code (first part before extra details)
-                        calc_df["clean_spec"] = calc_df["Specification 1"].str.extract(r"^([^:]+:\s*[^:]+)")[0].str.strip()
+                # Apply Well A exceptions
+                if exceptions_map:
+                    # Extract tool code (first part before extra details)
+                    calc_df["clean_spec"] = calc_df["Specification 1"].str.extract(r"^([^:]+:\s*[^:]+)")[0].str.strip()
+                    for spec_name, qty in exceptions_map.items():
+                        calc_df.loc[
+                            calc_df["clean_spec"].str.upper() == spec_name.upper(),
+                            "Quantity of Tools"
+                        ] = qty
+                    calc_df.drop(columns=["clean_spec"], inplace=True)
                 
-                        for spec_name, qty in exceptions_map.items():
-                            calc_df.loc[
-                                calc_df["clean_spec"].str.upper() == spec_name.upper(),
-                                "Quantity of Tools"
-                            ] = qty
-                
-                        calc_df.drop(columns=["clean_spec"], inplace=True)
-
-
+                # Assign other sidebar inputs
                 calc_df["Total Days"] = total_days
                 calc_df["Total Months"] = total_months
                 calc_df["Total Depth (ft)"] = total_depth
@@ -407,41 +403,25 @@ if uploaded_file:
                 
                 # --- Define groups and their Total Flat Charge values ---
                 flat_charge_groups = {
-                    # ECS-NMR group → Total Flat Charge = 1
-                    1: [
-                        "ECS-NMR (150DegC Max)", "PN1: PROC_NMR1", "PN2: PROC_NMR2", "PN3: PROC_NMR3",
+                    1: ["ECS-NMR (150DegC Max)", "PN1: PROC_NMR1", "PN2: PROC_NMR2", "PN3: PROC_NMR3",
                         "PN6: PROC_NMR6", "PE1: PROC_ES1", "PP1: PROC_PETR1", "PP6: PROC_PETR6",
                         "Dual-OBMI DSI (150DegC Max)", "PA12: PROC_ACOU14", "PI1: PROC_IMAG1", "PI2: PROC_IMAG2", 
                         "PI7: PROC_IMAG7", "PI8: PROC_IMAG8", "PI9: PROC_IMAG9", "PI12: PROC_IMAG12", "PI13: PROC_IMAG13",
                         "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "PPT12: PROC_PT12",
                         "Unit, Cables & Conveyance", "DT2:RTDT_SAT"
                     ],
-                    # MDT=2
-                    2: [
-                        "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "FP19: FPS_SPHA", "FP23: FPS_TRA"
-                    ],
-                    
-                    # Dual-OBMI and MDT = 4
-                    4: [
-                        "Dual-OBMI DSI (150DegC Max)", "PP7: PROC_PETR7", "PA7: PROC_ACOU6", "PA11: PROC_ACOU13",
+                    2: ["MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "FP19: FPS_SPHA", "FP23: FPS_TRA"],
+                    4: ["Dual-OBMI DSI (150DegC Max)", "PP7: PROC_PETR7", "PA7: PROC_ACOU6", "PA11: PROC_ACOU13",
                         "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "DT3:RTDT_PER"
                     ],
-                    # MDT=5
-                    5: [
-                        "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "FP18: FPS_SAMP", "FP28: FPS_FCHA_1", "FP33: FPS_FCHA_6","FP34: FPS_FCHA_7","FP11: FPS_PROB_FO","FP26: FPS_FCON",
+                    5: ["MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "FP18: FPS_SAMP", "FP28: FPS_FCHA_1",
+                        "FP33: FPS_FCHA_6","FP34: FPS_FCHA_7","FP11: FPS_PROB_FO","FP26: FPS_FCON"
                     ],
-                    # MDT=10
-                    10: [
-                        "MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "FP42: FPS_PROB_XLD"
-                    ],
-                
-                    # XL Rock group → Total Flat Charge = 50
-                    50: [
-                        "XL Rock (150DegC Max)", "SC2: SC_ADD1", "SC2: SC_ADD2"
-                    ]
+                    10: ["MDT: LFA-QS-XLD-MIFA-Saturn-2MS (150DegC Max)", "FP42: FPS_PROB_XLD"],
+                    50: ["XL Rock (150DegC Max)", "SC2: SC_ADD1", "SC2: SC_ADD2"]
                 }
                 
-                # --- Apply Total Flat Charge per group (case-insensitive partial match) ---
+                # Apply Total Flat Charge per group
                 for charge_value, specs in flat_charge_groups.items():
                     calc_df.loc[
                         calc_df["Specification 1"].str.upper().apply(
@@ -449,41 +429,32 @@ if uploaded_file:
                         ),
                         "Total Flat Charge"
                     ] = charge_value
-                    
+                
                 # --- Recalc function ---
                 def recalc_costs(df):
                     df = df.copy()
-                
-                    # Ensure numeric values
                     for col in numeric_cols:
                         df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-                
+                    
                     totals = []
                     for _, row in df.iterrows():
                         spec = str(row["Specification 1"])
-                        if spec.startswith("---"):  # Divider rows
+                        if spec.startswith("---"):
                             totals.append(0)
                             continue
-                
                         disc_fraction = row["Discount (%)"] / 100
                         total_flat = row.get("Total Flat Charge", 0)
-                
-                        # --- Operating charge including Total Flat Charge ---
                         operating_charge = (
                             (row["Depth Charge (per ft)"] * row["Total Depth (ft)"]) +
                             (row["Survey Charge (per ft)"] * row["Total Survey (ft)"]) +
                             (row["Flat Charge"] * total_flat) +
                             (row["Hourly Charge"] * row["Total Hours"])
                         ) * (1 - disc_fraction)
-                
-                        # --- Rental charge ---
                         rental_charge = row["Quantity of Tools"] * (
                             (row["Daily Rate"] * row["Total Days"]) +
                             (row["Monthly Rate"] * row["Total Months"])
                         ) * (1 - disc_fraction)
-                
                         totals.append(operating_charge + rental_charge)
-                
                     df["Total (MYR)"] = totals
                     return df
                 
@@ -491,27 +462,63 @@ if uploaded_file:
                 safe_hole_size = hole_size.replace('"', '_').replace('.', '_')
                 
                 # --- Editable Calculated Costs Table ---
+                safe_hole_size = hole_size.replace('"', '_').replace('.', '_')
                 calc_key = f"calc_state_{safe_hole_size}"
+                
                 if calc_key not in st.session_state:
                     st.session_state[calc_key] = recalc_costs(calc_df)
                 
-                # Working copy
                 working_calc_df = st.session_state[calc_key].copy()
                 
-                # Ensure any new rows from calc_df are included
+                # Include any new rows from calc_df
                 missing_specs = set(calc_df["Specification 1"]) - set(working_calc_df["Specification 1"])
                 if missing_specs:
-                    working_calc_df = pd.concat([working_calc_df, calc_df[calc_df["Specification 1"].isin(missing_specs)]], ignore_index=True)
+                    working_calc_df = pd.concat(
+                        [working_calc_df, calc_df[calc_df["Specification 1"].isin(missing_specs)]],
+                        ignore_index=True
+                    )
                 
                 # --- Apply latest sidebar inputs to working_calc_df ---
-                working_calc_df["Quantity of Tools"] = quantity_tools
+                # Only apply quantity_tools if no Well A exception exists
+                exceptions_map = None
+                if selected_well == "Well A":
+                    if hole_size == '12.25"':
+                        exceptions_map = {
+                            "FP18: FPS_SAMP": 11,
+                            "FP19: FPS_SPHA": 4,
+                            "FP23: FPS_TRA": 4,
+                            "FP24: FPS_TRK": 1,
+                            "FP33: FPS_FCHA_6": 1,
+                            "FP34: FPS_FCHA_7": 1,
+                        }
+                    elif hole_size == '8.5"':
+                        exceptions_map = {
+                            "FP18: FPS_SAMP": 5,
+                            "FP19: FPS_SPHA": 2,
+                            "FP23: FPS_TRA": 2,
+                        }
+                
+                if not exceptions_map:
+                    working_calc_df["Quantity of Tools"] = quantity_tools
+                
+                # Apply Well A exceptions
+                if exceptions_map:
+                    working_calc_df["clean_spec"] = working_calc_df["Specification 1"].str.extract(r"^([^:]+:\s*[^:]+)")[0].str.strip()
+                    for spec_name, qty in exceptions_map.items():
+                        working_calc_df.loc[
+                            working_calc_df["clean_spec"].str.upper() == spec_name.upper(),
+                            "Quantity of Tools"
+                        ] = qty
+                    working_calc_df.drop(columns=["clean_spec"], inplace=True)
+                
+                # Apply other sidebar inputs
                 working_calc_df["Total Days"] = total_days
                 working_calc_df["Total Months"] = total_months
                 working_calc_df["Total Depth (ft)"] = total_depth
                 working_calc_df["Total Survey (ft)"] = total_survey
                 working_calc_df["Total Hours"] = total_hours
                 working_calc_df["Discount (%)"] = discount * 100
-                        
+                
                 # --- Recalculate totals ---
                 working_calc_df = recalc_costs(working_calc_df)
                 working_calc_df = working_calc_df.reset_index(drop=True)
@@ -523,6 +530,16 @@ if uploaded_file:
                     key=f"calc_editor_{safe_hole_size}",
                 )
                 
+                # --- Reapply Well A exceptions after user edits ---
+                if selected_well == "Well A" and exceptions_map:
+                    edited_df["clean_spec"] = edited_df["Specification 1"].str.extract(r"^([^:]+:\s*[^:]+)")[0].str.strip()
+                    for spec_name, qty in exceptions_map.items():
+                        edited_df.loc[
+                            edited_df["clean_spec"].str.upper() == spec_name.upper(),
+                            "Quantity of Tools"
+                        ] = qty
+                    edited_df.drop(columns=["clean_spec"], inplace=True)
+                
                 # --- Recalculate after user edits ---
                 updated_calc_df = recalc_costs(edited_df)
                 st.session_state[calc_key] = updated_calc_df
@@ -533,7 +550,8 @@ if uploaded_file:
                 st.write(f"### 💵 Section Total for {hole_size}\" Hole: {section_total:,.2f}")
                 
                 # Store for Excel download
-                all_calc_dfs_for_excel.append((hole_size, used_special_cases, updated_calc_df, special_cases))
+                all_calc_dfs_for_excel.append((hole_size, updated_calc_df))
+
 
 
     # --- Grand Total ---
@@ -726,6 +744,7 @@ if st.button("Download Cost Estimate Excel"):
         file_name="Cost_Estimate.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
 
